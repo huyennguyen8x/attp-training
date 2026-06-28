@@ -1037,7 +1037,7 @@ async function renderAdmin() {
   const el = document.getElementById('admin-content');
 
   // Setup banner nếu chưa cấu hình GAS
-  const needsSetup = GAS_URL === 'YOUR_GAS_WEB_APP_URL_HERE';
+  const needsSetup = GAS_URL === 'https://script.google.com/macros/s/AKfycbx-zyRN0YDlTmKwOu-MO_NKQzAkkRjrqPw60e30Qg1NNX9bAb5FIzpXDQ4D9DIwP5t39w/exec';
 
   let nvRes, qRes;
   try {
@@ -1053,7 +1053,7 @@ async function renderAdmin() {
   el.innerHTML = `
     ${needsSetup ? `<div class="setup-banner">
       <h3>⚙️ Cần cấu hình GAS URL</h3>
-      <p>Mở file <code>index.html</code> và thay <code>YOUR_GAS_WEB_APP_URL_HERE</code> bằng URL của Google Apps Script Web App.</p>
+      <p>Mở file <code>index.html</code> và thay <code>https://script.google.com/macros/s/AKfycbx-zyRN0YDlTmKwOu-MO_NKQzAkkRjrqPw60e30Qg1NNX9bAb5FIzpXDQ4D9DIwP5t39w/exec</code> bằng URL của Google Apps Script Web App.</p>
       <p>Xem hướng dẫn chi tiết trong file <code>HUONG_DAN_DEPLOY.md</code>.</p>
     </div>` : ''}
 
@@ -1234,7 +1234,7 @@ async function boot() {
 
   // Lấy session hiện tại
   try {
-    if (GAS_URL !== 'YOUR_GAS_WEB_APP_URL_HERE') {
+    if (GAS_URL !== 'https://script.google.com/macros/s/AKfycbx-zyRN0YDlTmKwOu-MO_NKQzAkkRjrqPw60e30Qg1NNX9bAb5FIzpXDQ4D9DIwP5t39w/exec') {
       const res = await gasGet({action:'getSession'});
       if (res.ok && res.session) {
         appState.currentSession = res.session;
