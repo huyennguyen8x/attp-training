@@ -375,28 +375,41 @@ let appState = {
 // ══════════════════════════════════════════════════════════════
 // API CALLS
 // ══════════════════════════════════════════════════════════════
+// Gọi GAS qua JSONP để bypass CORS hoàn toàn
+function gasCall(params) {
+  return new Promise((resolve, reject) => {
+    const cbName = '_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const timeout = setTimeout(() => {
+      delete window[cbName];
+      const s = document.getElementById(cbName);
+      if (s) s.remove();
+      reject(new Error('Timeout'));
+    }, 15000);
+    window[cbName] = (data) => {
+      clearTimeout(timeout);
+      delete window[cbName];
+      const s = document.getElementById(cbName);
+      if (s) s.remove();
+      resolve(data);
+    };
+    const url = GAS_URL + '?' + new URLSearchParams({...params, callback: cbName});
+    const script = document.createElement('script');
+    script.id = cbName;
+    script.src = url;
+    script.onerror = () => {
+      clearTimeout(timeout);
+      delete window[cbName];
+      script.remove();
+      reject(new Error('Script load error'));
+    };
+    document.head.appendChild(script);
+  });
+}
 async function gasGet(params) {
-  const url = GAS_URL + '?' + new URLSearchParams(params);
-  const r = await fetch(url, {redirect:'follow'});
-  return r.json();
+  return gasCall(params);
 }
 async function gasPost(body) {
-  // GAS không hỗ trợ CORS với POST — dùng GET với params thay thế
-  const params = new URLSearchParams({...body, _method:'POST'});
-  // Với data lớn (import), dùng POST dạng text/plain để bypass preflight
-  const dataStr = JSON.stringify(body);
-  if (dataStr.length > 1500) {
-    const r = await fetch(GAS_URL, {
-      method:'POST',
-      body: dataStr,
-      headers:{'Content-Type':'text/plain'},
-      redirect:'follow'
-    });
-    return r.json();
-  }
-  const url = GAS_URL + '?' + new URLSearchParams({payload: dataStr});
-  const r = await fetch(url, {redirect:'follow'});
-  return r.json();
+  return gasCall({payload: JSON.stringify(body)});
 }
 
 // Offline queue: lưu checkin khi mất mạng
