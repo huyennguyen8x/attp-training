@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>ATTP Training System</title>
+<style>
+:root{
+  --navy:#1a2e4a;--navy2:#243d5e;--teal:#0d7c86;--teal2:#0a6870;
+  --teal-lt:#e5f4f5;--teal-md:#b0dde0;
+  --green:#1a7a46;--green-lt:#e6f4ed;
+  --red:#c0392b;--red-lt:#fdecea;
+  --amber:#b5670a;--amber-lt:#fef3e0;
+  --purple:#5c35b8;--purple-lt:#ede8fc;
+  --gray0:#f6f7f9;--gray1:#edf0f3;--gray2:#d0d7e0;
+  --gray3:#8a96a3;--gray4:#4a5568;--text:#1a2332;
+  --white:#fff;--radius:10px;--shadow:0 2px 14px rgba(0,0,0,.07);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--gray0);color:var(--text);min-height:100vh;font-size:15px;}
+
+/* NAV */
+.nav{background:var(--navy);height:52px;display:flex;align-items:stretch;position:sticky;top:0;z-index:200;overflow-x:auto;}
+.nav-brand{color:#fff;font-size:14px;font-weight:700;padding:0 16px;display:flex;align-items:center;gap:8px;white-space:nowrap;border-right:1px solid rgba(255,255,255,.12);flex-shrink:0;}
+.nav-brand .qa-badge{background:var(--teal);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.05em;}
+.nav-tabs{display:flex;flex:1;}
+.nav-tab{color:rgba(255,255,255,.6);background:none;border:none;border-bottom:3px solid transparent;padding:0 16px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;transition:all .15s;font-family:inherit;}
+.nav-tab:hover{color:#fff;background:rgba(255,255,255,.06);}
+.nav-tab.active{color:#fff;border-bottom-color:var(--teal);}
+.nav-tab.hidden{display:none;}
+
+/* VIEWS */
+.view{display:none;max-width:720px;margin:0 auto;padding:20px 16px 60px;}
+.view.active{display:block;}
+.view-wide{max-width:100%;padding:20px 20px 60px;}
+
+/* CARDS */
+.card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px;}
+.card-head{background:var(--navy);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.card-head h3{color:#fff;font-size:14px;font-weight:600;}
+.card-body{padding:20px;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit;white-space:nowrap;}
+.btn-primary{background:var(--teal);color:#fff;}
+.btn-primary:hover{background:var(--teal2);}
+.btn-primary:disabled{background:var(--gray2);color:var(--gray3);cursor:not-allowed;}
+.btn-success{background:var(--green);color:#fff;}
+.btn-danger{background:var(--red);color:#fff;}
+.btn-amber{background:var(--amber);color:#fff;}
+.btn-purple{background:var(--purple);color:#fff;}
+.btn-ghost{background:transparent;color:var(--gray4);border:1.5px solid var(--gray2);}
+.btn-ghost:hover{border-color:var(--teal);color:var(--teal);}
+.btn-sm{padding:5px 11px;font-size:12px;border-radius:6px;}
+.btn-lg{padding:14px 20px;font-size:16px;width:100%;justify-content:center;}
+
+/* FORM */
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--gray4);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+.field input,.field select,.field textarea{width:100%;padding:11px 14px;border:1.5px solid var(--gray2);border-radius:8px;font-size:15px;color:var(--text);background:var(--gray0);font-family:inherit;transition:border .15s;}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--teal);background:#fff;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.field-note{font-size:11px;color:var(--gray3);margin-top:4px;}
+.input-big{width:100%;padding:16px;border:2px solid var(--gray2);border-radius:10px;font-size:22px;font-weight:700;text-align:center;letter-spacing:.12em;font-family:inherit;color:var(--navy);transition:border .15s;}
+.input-big:focus{outline:none;border-color:var(--teal);}
+
+/* ALERTS */
+.alert{padding:12px 16px;border-radius:8px;font-size:13px;font-weight:500;margin-bottom:12px;line-height:1.5;}
+.alert-error{background:var(--red-lt);color:var(--red);border:1px solid #f4b8b3;}
+.alert-success{background:var(--green-lt);color:var(--green);border:1px solid #9dd8b8;}
+.alert-warning{background:var(--amber-lt);color:var(--amber);border:1px solid #f5c876;}
+.alert-info{background:var(--teal-lt);color:var(--teal);border:1px solid var(--teal-md);}
+
+/* BADGE */
+.badge{display:inline-block;font-size:11px;padding:2px 9px;border-radius:5px;font-weight:700;}
+.badge-green{background:var(--green-lt);color:var(--green);}
+.badge-red{background:var(--red-lt);color:var(--red);}
+.badge-amber{background:var(--amber-lt);color:var(--amber);}
+.badge-gray{background:var(--gray1);color:var(--gray3);}
+.badge-teal{background:var(--teal-lt);color:var(--teal);}
+.badge-purple{background:var(--purple-lt);color:var(--purple);}
+
+/* STATS BAR */
+.stats-bar{background:var(--navy);border-radius:var(--radius);padding:14px 20px;display:flex;gap:0;margin-bottom:16px;}
+.stat{flex:1;text-align:center;border-right:1px solid rgba(255,255,255,.1);padding:6px 8px;}
+.stat:last-child{border-right:none;}
+.stat-val{font-size:24px;font-weight:800;color:#fff;line-height:1;}
+.stat-lbl{font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-top:3px;}
+
+/* TABLE */
+.table-wrap{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:680px;}
+thead tr{background:var(--navy);}
+th{padding:10px 13px;text-align:left;color:rgba(255,255,255,.8);font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;}
+td{padding:10px 13px;border-bottom:1px solid var(--gray1);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--gray0);}
+
+/* SUCCESS SCREEN */
+.success-screen{text-align:center;padding:36px 20px;}
+.success-icon{font-size:60px;margin-bottom:14px;}
+.success-title{font-size:22px;font-weight:800;margin-bottom:8px;}
+.success-detail{font-size:14px;color:var(--gray4);margin-bottom:24px;line-height:1.7;}
+
+/* QUIZ */
+.quiz-wrap{max-width:680px;margin:0 auto;}
+.quiz-header{background:var(--white);border-radius:var(--radius);padding:14px 18px;margin-bottom:14px;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.quiz-timer{font-size:22px;font-weight:800;color:var(--teal);font-variant-numeric:tabular-nums;}
+.quiz-timer.warning{color:var(--red);}
+.progress-wrap{height:5px;background:var(--gray1);border-radius:99px;margin-bottom:18px;overflow:hidden;}
+.progress-bar{height:100%;background:var(--teal);border-radius:99px;transition:width .3s;}
+.q-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;margin-bottom:14px;}
+.q-label{font-size:11px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
+.q-text{font-size:16px;font-weight:600;color:var(--navy);margin-bottom:18px;line-height:1.55;}
+.opt-btn{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border-radius:9px;border:2px solid var(--gray2);margin-bottom:9px;cursor:pointer;transition:all .15s;background:#fff;text-align:left;font-family:inherit;font-size:14px;color:var(--text);}
+.opt-btn:hover:not(:disabled){border-color:var(--teal);background:var(--teal-lt);}
+.opt-btn.selected{border-color:var(--teal);background:var(--teal-lt);}
+.opt-btn.correct{border-color:var(--green);background:var(--green-lt);}
+.opt-btn.wrong{border-color:var(--red);background:var(--red-lt);}
+.opt-btn:disabled{cursor:default;}
+.opt-letter{width:30px;height:30px;border-radius:7px;background:var(--gray1);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;color:var(--gray4);}
+.opt-btn.selected .opt-letter{background:var(--teal);color:#fff;}
+.opt-btn.correct .opt-letter{background:var(--green);color:#fff;}
+.opt-btn.wrong .opt-letter{background:var(--red);color:#fff;}
+.quiz-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.q-nav-dots{display:flex;gap:4px;flex-wrap:wrap;max-width:360px;}
+.q-dot{width:12px;height:12px;border-radius:50%;background:var(--gray2);border:none;cursor:pointer;transition:all .15s;padding:0;}
+.q-dot.answered{background:var(--teal);}
+.q-dot.current{background:var(--amber);transform:scale(1.3);}
+
+/* RESULT */
+.result-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:30px 22px;text-align:center;}
+.score-ring{width:110px;height:110px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 18px;border:4px solid;}
+.score-ring.pass{border-color:var(--green);background:var(--green-lt);}
+.score-ring.fail{border-color:var(--red);background:var(--red-lt);}
+.score-pct{font-size:28px;font-weight:900;line-height:1;}
+.score-pct.pass{color:var(--green);}
+.score-pct.fail{color:var(--red);}
+.verdict{font-size:22px;font-weight:800;margin-bottom:6px;}
+.verdict.pass{color:var(--green);}
+.verdict.fail{color:var(--red);}
+.breakdown{border-top:1px solid var(--gray1);padding-top:16px;margin-top:16px;text-align:left;}
+.b-row{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--gray1);font-size:13px;line-height:1.5;}
+.b-row:last-child{border-bottom:none;}
+
+/* DASHBOARD */
+.filter-bar{background:var(--white);border-radius:var(--radius);padding:14px 18px;margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;box-shadow:var(--shadow);}
+.lock-badge{font-size:12px;padding:4px 11px;border-radius:6px;font-weight:600;}
+.lock-badge.open{background:var(--green-lt);color:var(--green);}
+.lock-badge.closed{background:var(--red-lt);color:var(--red);}
+.random-box{background:var(--purple-lt);border:2px solid var(--purple);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;}
+.random-names{flex:1;}
+.random-title{font-size:11px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+.random-list{font-size:14px;font-weight:600;color:var(--purple);line-height:1.8;}
+
+/* ADMIN */
+.admin-section{margin-bottom:22px;}
+.admin-section h4{font-size:12px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--gray1);}
+.q-editor-card{background:#fff;border-radius:var(--radius);border:1.5px solid var(--gray2);margin-bottom:10px;overflow:hidden;}
+.q-editor-head{background:var(--navy2);padding:10px 14px;display:flex;align-items:flex-start;gap:10px;}
+.q-num-badge{background:var(--teal);color:#fff;font-size:11px;font-weight:700;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.q-editor-head textarea{flex:1;background:transparent;border:none;color:#fff;font-size:14px;font-weight:500;font-family:inherit;resize:none;outline:none;line-height:1.4;min-height:36px;}
+.q-editor-head textarea::placeholder{color:rgba(255,255,255,.35);}
+.q-editor-body{padding:12px 14px;}
+.opt-edit-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.opt-ltr-edit{width:28px;height:28px;border-radius:6px;background:var(--gray1);color:var(--gray4);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid transparent;flex-shrink:0;}
+.opt-ltr-edit.correct{background:var(--green-lt);color:var(--green);border-color:var(--green);}
+.opt-edit-input{flex:1;padding:7px 10px;border:1.5px solid var(--gray2);border-radius:7px;font-size:13px;font-family:inherit;}
+.opt-edit-input:focus{outline:none;border-color:var(--teal);}
+.add-q-btn{width:100%;padding:13px;border:2px dashed var(--gray2);background:transparent;border-radius:var(--radius);color:var(--gray3);font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;}
+.add-q-btn:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-lt);}
+
+/* SETUP BANNER */
+.setup-banner{background:var(--amber-lt);border:2px solid var(--amber);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;}
+.setup-banner h3{color:var(--amber);font-size:15px;margin-bottom:8px;}
+.setup-banner p{font-size:13px;color:var(--gray4);line-height:1.6;margin-bottom:4px;}
+.setup-banner code{background:rgba(0,0,0,.07);padding:1px 6px;border-radius:4px;font-size:12px;}
+
+/* SPINNER */
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading{text-align:center;padding:40px;color:var(--gray3);font-size:14px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:#fff;padding:11px 20px;border-radius:10px;font-size:14px;font-weight:500;opacity:0;transition:all .3s;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25);white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.error{background:var(--red);}
+.toast.success{background:var(--green);}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal-bg.hidden{display:none;}
+.modal{background:#fff;border-radius:14px;padding:24px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);}
+.modal h3{font-size:17px;font-weight:700;margin-bottom:16px;color:var(--navy);}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+
+/* OFFLINE INDICATOR */
+.offline-bar{background:var(--amber);color:#fff;text-align:center;padding:7px;font-size:12px;font-weight:600;display:none;}
+.offline-bar.show{display:block;}
+
+@media(max-width:480px){
+  .field-row{grid-template-columns:1fr;}
+  .stats-bar{flex-wrap:wrap;}
+  .stat{min-width:50%;}
+  .stat-val{font-size:20px;}
+  .q-nav-dots{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- OFFLINE BAR -->
+<div class="offline-bar" id="offline-bar">⚠ Đang offline — dữ liệu sẽ tự đồng bộ khi có mạng</div>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-brand">
+    <span style="font-size:18px">🛡️</span> ATTP
+    <span class="qa-badge" id="qa-badge" style="display:none">QA</span>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="tab-checkin" onclick="gotoTab('checkin')">✅ Check-in</button>
+    <button class="nav-tab" id="tab-quiz" onclick="gotoTab('quiz')">📝 Bài Test</button>
+    <button class="nav-tab hidden" id="tab-dashboard" onclick="gotoTab('dashboard')">📊 Dashboard</button>
+    <button class="nav-tab hidden" id="tab-admin" onclick="gotoTab('admin')">⚙️ Quản lý</button>
+    <button class="nav-tab" id="tab-qa-login" onclick="gotoTab('qa-login')" style="margin-left:auto;color:rgba(255,255,255,.4);">🔐 QA</button>
+  </div>
+</nav>
+
+<!-- ── VIEWS ─────────────────────────────────────────────── -->
+
+<!-- CHECKIN -->
+<div id="view-checkin" class="view active">
+  <div id="checkin-content"></div>
+</div>
+
+<!-- QUIZ -->
+<div id="view-quiz" class="view">
+  <div id="quiz-content"></div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="view-dashboard" class="view view-wide">
+  <div id="dashboard-content"></div>
+</div>
+
+<!-- ADMIN -->
+<div id="view-admin" class="view">
+  <div id="admin-content"></div>
+</div>
+
+<!-- QA LOGIN -->
+<div id="view-qa-login" class="view">
+  <div class="card" style="max-width:400px;margin:40px auto;">
+    <div class="card-head"><h3>🔐 Đăng nhập QA</h3></div>
+    <div class="card-body">
+      <div class="field">
+        <label>Mật khẩu QA</label>
+        <input type="password" id="qa-pw-input" placeholder="Nhập mật khẩu..." onkeydown="if(event.key==='Enter')doQALogin()">
+      </div>
+      <div id="qa-login-error" class="alert alert-error" style="display:none"></div>
+      <button class="btn btn-primary btn-lg" onclick="doQALogin()">Đăng nhập</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-bg hidden" id="modal-walkin">
+  <div class="modal">
+    <h3>📝 Đăng ký Walk-in</h3>
+    <p style="font-size:13px;color:var(--gray3);margin-bottom:16px">Mã NV <strong id="walkin-code-display"></strong> không có trong danh sách đăng ký.</p>
+    <div class="field">
+      <label>Họ và tên *</label>
+      <input type="text" id="wi-hoten" placeholder="Nguyễn Văn A">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Store *</label>
+        <select id="wi-store" onchange="wiStoreChange()">
+          <option value="">-- Chọn store --</option>
+          <option>LB</option><option>TB</option><option>SYR</option>
+          <option>BT</option><option>TD</option><option>PMH</option><option>VC</option><option>CR</option><option>Depot HAN</option><option>Depot HCM</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Location</label>
+        <input type="text" id="wi-location" placeholder="Tự động" readonly style="background:var(--gray1);">
+      </div>
+    </div>
+    <div class="field">
+      <label>Bộ phận / Dept</label>
+      <input type="text" id="wi-dept" placeholder="Kitchen, Lounge, Stock...">
+    </div>
+    <div id="wi-error" class="alert alert-error" style="display:none"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-walkin')">Huỷ</button>
+      <button class="btn btn-primary" onclick="submitWalkIn()">Xác nhận Walk-in</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg hidden" id="modal-approve-retake">
+  <div class="modal">
+    <h3>✅ Phê duyệt làm lại</h3>
+    <p style="font-size:13px;color:var(--gray4);margin-bottom:16px">Phê duyệt cho <strong id="retake-nv-name"></strong> làm bài kiểm tra lại.</p>
+    <div class="field">
+      <label>Ghi chú (tuỳ chọn)</label>
+      <input type="text" id="retake-note" placeholder="VD: Vắng có lý do, đến muộn...">
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-approve-retake')">Huỷ</button>
+      <button class="btn btn-success" onclick="submitApproveRetake()">Phê duyệt</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg hidden" id="modal-create-session">
+  <div class="modal">
+    <h3>➕ Tạo phiên đào tạo mới</h3>
+    <div class="field">
+      <label>Tên phiên *</label>
+      <input type="text" id="ns-name" placeholder="VD: ATTP HCM Đợt 1 2025">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Ngày *</label>
+        <input type="text" id="ns-date" placeholder="28/06/2025">
+      </div>
+      <div class="field">
+        <label>Giờ bắt đầu</label>
+        <input type="text" id="ns-start" value="08:20">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-create-session')">Huỷ</button>
+      <button class="btn btn-primary" onclick="submitCreateSession()">Tạo phiên</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// CẤU HÌNH — THAY GAS_URL SAU KHI DEPLOY APPS SCRIPT
+// ══════════════════════════════════════════════════════════════
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzyAhaaHb-8BKA_u51hF4zmFkv7488yiq3N4KV8-fnOFQaFJFCUFWkiLM18zgEw70B0hw/exec';
+const LETTERS = ['A','B','C','D'];
+const HN_STORES = ['LB','TB','SYR'];
+
+// ══════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════
+let appState = {
+  qaPassword: null,
+  isQA: false,
+  currentSession: null,
+  sessionStatus: {checkinOpen:true, quizOpen:false},
+  dashboardData: null,
+  questions: [],
+  quizAnswers: {},
+  quizSubmitted: false,
+  timerInt: null,
+  timeLeft: 0,
+  currentQ: 0,
+  quizMaNV: null,
+  quizHoTen: null,
+  quizAttempt: 0,
+  pendingWalkIn: null,
+  pendingRetake: null,
+  randomCallPool: [],
+  offlineQueue: JSON.parse(localStorage.getItem('attp_offline') || '[]'),
+};
+
+// ══════════════════════════════════════════════════════════════
+// API CALLS
+// ══════════════════════════════════════════════════════════════
+// Gọi GAS qua JSONP để bypass CORS hoàn toàn
+function gasCall(params) {
+  return new Promise((resolve, reject) => {
+    const cbName = '_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const timeout = setTimeout(() => {
+      delete window[cbName];
+      const s = document.getElementById(cbName);
+      if (s) s.remove();
+      reject(new Error('Timeout'));
+    }, 15000);
+    window[cbName] = (data) => {
+      clearTimeout(timeout);
+      delete window[cbName];
+      const s = document.getElementById(cbName);
+      if (s) s.remove();
+      resolve(data);
+    };
+    const url = GAS_URL + '?' + new URLSearchParams({...params, callback: cbName});
+    const script = document.createElement('script');
+    script.id = cbName;
+    script.src = url;
+    script.onerror = () => {
+      clearTimeout(timeout);
+      delete window[cbName];
+      script.remove();
+      reject(new Error('Script load error'));
+    };
+    document.head.appendChild(script);
+  });
+}
+async function gasGet(params) {
+  return gasCall(params);
+}
+async function gasPost(body) {
+  return gasCall({payload: JSON.stringify(body)});
+}
+
+// Offline queue: lưu checkin khi mất mạng
+function saveOffline(item) {
+  appState.offlineQueue.push({...item, _queuedAt: Date.now()});
+  localStorage.setItem('attp_offline', JSON.stringify(appState.offlineQueue));
+}
+async function syncOfflineQueue() {
+  if (!appState.offlineQueue.length) return;
+  const remaining = [];
+  for (const item of appState.offlineQueue) {
+    try {
+      const res = await gasPost(item);
+      if (!res.ok && !res.alreadyCheckedIn) remaining.push(item);
+    } catch { remaining.push(item); }
+  }
+  appState.offlineQueue = remaining;
+  localStorage.setItem('attp_offline', JSON.stringify(remaining));
+  if (!remaining.length) showToast('✅ Đã đồng bộ '+( appState.offlineQueue.length)+' checkin offline');
+}
+
+// Monitor mạng
+window.addEventListener('online', () => { document.getElementById('offline-bar').classList.remove('show'); syncOfflineQueue(); });
+window.addEventListener('offline', () => document.getElementById('offline-bar').classList.add('show'));
+if (!navigator.onLine) document.getElementById('offline-bar').classList.add('show');
+
+// ══════════════════════════════════════════════════════════════
+// NAV
+// ══════════════════════════════════════════════════════════════
+function gotoTab(name) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.getElementById('tab-'+name)?.classList.add('active');
+  if (name==='checkin') renderCheckin();
+  if (name==='quiz') renderQuizEntry();
+  if (name==='dashboard') renderDashboard();
+  if (name==='admin') renderAdmin();
+}
+
+function setQAMode(on) {
+  appState.isQA = on;
+  document.getElementById('qa-badge').style.display = on ? '' : 'none';
+  ['dashboard','admin'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('hidden', !on);
+  });
+  document.getElementById('tab-qa-login').style.display = on ? 'none' : '';
+}
+
+// ══════════════════════════════════════════════════════════════
+// CHECKIN
+// ══════════════════════════════════════════════════════════════
+function renderCheckin() {
+  const s = appState.currentSession;
+  const status = appState.sessionStatus;
+  document.getElementById('checkin-content').innerHTML = `
+    <div class="card">
+      <div class="card-head">
+        <h3>✅ ${s ? s['Tên đợt'] || 'Điểm danh tham dự' : 'Điểm danh tham dự'}</h3>
+        <span class="lock-badge ${status.checkinOpen?'open':'closed'}">
+          ${status.checkinOpen ? '● Đang mở' : '● Đã đóng'}
+        </span>
+      </div>
+      <div class="card-body">
+        <div style="text-align:center;padding:28px 0 20px">
+          <div style="font-size:52px;margin-bottom:12px">👤</div>
+          <div style="font-size:20px;font-weight:700;color:var(--navy);margin-bottom:6px">Điểm danh tham dự</div>
+          <div style="font-size:13px;color:var(--gray3);margin-bottom:28px">
+            ${s ? s['Ngày'] : new Date().toLocaleDateString('vi-VN')} &nbsp;·&nbsp; Nhận checkin ${s?s['Giờ bắt đầu']:'08:20'}–09:30
+          </div>
+          <div id="ci-error" class="alert alert-error" style="display:none;text-align:left"></div>
+          <div class="field" style="text-align:left">
+            <label>Mã nhân viên của bạn</label>
+            <input class="input-big" id="ci-code" placeholder="VD: NV1001"
+              oninput="ciLookup(this.value)"
+              onkeydown="if(event.key==='Enter')doCheckin()"
+              autocomplete="off" spellcheck="false" autocorrect="off">
+          </div>
+          <div id="ci-confirm" style="display:none;background:var(--teal-lt);border:1.5px solid var(--teal-md);border-radius:8px;padding:12px 16px;font-size:15px;color:var(--teal);font-weight:700;margin-bottom:16px;text-align:center"></div>
+          <button class="btn btn-primary btn-lg" onclick="doCheckin()" id="ci-btn">Xác nhận điểm danh</button>
+          <p style="font-size:12px;color:var(--gray3);margin-top:12px">Không thấy tên? Gặp QA in-charge để được hỗ trợ</p>
+        </div>
+      </div>
+    </div>`;
+}
+
+function ciLookup(val) {
+  const code = val.trim().toUpperCase();
+  const confirm = document.getElementById('ci-confirm');
+  if (code.length >= 3) {
+    confirm.style.display = 'block';
+    confirm.textContent = `Mã: ${code} — Nhấn "Xác nhận điểm danh" để tiếp tục`;
+  } else confirm.style.display = 'none';
+}
+
+async function doCheckin() {
+  if (!appState.sessionStatus.checkinOpen) { showError('ci-error','Checkin đã đóng. Liên hệ QA in-charge.'); return; }
+  const code = document.getElementById('ci-code').value.trim().toUpperCase();
+  if (!code) { showError('ci-error','Vui lòng nhập mã nhân viên.'); return; }
+  const sessionId = appState.currentSession?.['Session ID'];
+  if (!sessionId) { showError('ci-error','Chưa có phiên đào tạo. Liên hệ QA.'); return; }
+
+  const btn = document.getElementById('ci-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Đang xử lý...';
+
+  const body = {action:'checkin', maNV:code, sessionId, hoTen:'', store:'', dept:'', isWalkIn:false};
+
+  try {
+    let res;
+    if (!navigator.onLine) {
+      // Offline: check danh sách local nếu có
+      saveOffline(body);
+      showCheckinSuccess({maNV:code, hoTen:code, store:'', dept:'', location:'', time:new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}), isWalkIn:false, _offline:true});
+      return;
+    }
+    res = await gasPost(body);
+    if (res.ok) { showCheckinSuccess(res); return; }
+    if (res.alreadyCheckedIn) { showError('ci-error', `Mã ${code} đã điểm danh rồi. Liên hệ QA nếu cần hỗ trợ.`); btn.disabled=false; btn.textContent='Xác nhận điểm danh'; return; }
+    // Walk-in
+    if (!res.found) {
+      appState.pendingWalkIn = {maNV:code, sessionId};
+      document.getElementById('walkin-code-display').textContent = code;
+      document.getElementById('modal-walkin').classList.remove('hidden');
+      btn.disabled=false; btn.textContent='Xác nhận điểm danh';
+      return;
+    }
+    showError('ci-error', res.error || 'Có lỗi xảy ra.');
+  } catch(e) {
+    saveOffline(body);
+    showCheckinSuccess({maNV:code, hoTen:code, store:'', dept:'', location:'', time:new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}), isWalkIn:false, _offline:true});
+  } finally {
+    btn.disabled=false; btn.innerHTML='Xác nhận điểm danh';
+  }
+}
+
+function showCheckinSuccess(nv) {
+  document.getElementById('checkin-content').innerHTML = `
+    <div class="card">
+      <div class="card-head"><h3>✅ Điểm danh thành công</h3></div>
+      <div class="card-body">
+        <div class="success-screen">
+          <div class="success-icon">${nv._offline ? '📶' : '✅'}</div>
+          <div class="success-title" style="color:var(--green)">${nv._offline ? 'Đã lưu offline!' : 'Điểm danh thành công!'}</div>
+          <div class="success-detail">
+            <strong>${nv.hoTen}</strong>${nv.store ? ' · '+nv.store : ''}${nv.dept ? ' · '+nv.dept : ''}<br>
+            <span style="color:var(--gray3);font-size:12px">${nv.time}${nv.isWalkIn?' · <span style="color:var(--purple);font-weight:600">Walk-in</span>':''}${nv._offline?' · Đang offline, sẽ sync khi có mạng':''}${nv._sessionSwitch?' · <span style="color:var(--amber);font-weight:600">⚠ Đổi ca</span>':''}</span>
+          </div>
+          <div class="alert alert-success" style="margin-bottom:20px">
+            ✓ Bài kiểm tra sẽ được mở bởi QA sau khi buổi học kết thúc. Vui lòng chú ý thông báo.
+          </div>
+          <button class="btn btn-ghost btn-lg" onclick="renderCheckin()">← Người tiếp theo</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// Walk-in modal
+function wiStoreChange() {
+  const store = document.getElementById('wi-store').value.toUpperCase();
+  document.getElementById('wi-location').value = HN_STORES.includes(store) ? 'HN' : (store ? 'HCM' : '');
+}
+async function submitWalkIn() {
+  const hoTen = document.getElementById('wi-hoten').value.trim();
+  const store = document.getElementById('wi-store').value;
+  const dept = document.getElementById('wi-dept').value.trim();
+  if (!hoTen || !store) { document.getElementById('wi-error').textContent='Vui lòng nhập đầy đủ Họ tên và Store.'; document.getElementById('wi-error').style.display='block'; return; }
+  const location = HN_STORES.includes(store.toUpperCase()) ? 'HN' : 'HCM';
+  const body = {action:'checkin', ...appState.pendingWalkIn, hoTen, store, dept, location, isWalkIn:true};
+  try {
+    const res = navigator.onLine ? await gasPost(body) : (saveOffline(body), {ok:true, hoTen, store, dept, location, time:new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}), isWalkIn:true, _offline:!navigator.onLine});
+    if (res.ok) { closeModal('modal-walkin'); showCheckinSuccess(res); }
+    else document.getElementById('wi-error').textContent = res.error; document.getElementById('wi-error').style.display='block';
+  } catch { saveOffline(body); closeModal('modal-walkin'); showCheckinSuccess({hoTen,store,dept,location,time:new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}),isWalkIn:true,_offline:true}); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// QUIZ ENTRY
+// ══════════════════════════════════════════════════════════════
+function renderQuizEntry() {
+  const status = appState.sessionStatus;
+  document.getElementById('quiz-content').innerHTML = `
+    <div class="card">
+      <div class="card-head">
+        <h3>📝 Bài kiểm tra ATTP</h3>
+        <span class="lock-badge ${status.quizOpen?'open':'closed'}">${status.quizOpen?'● Đang mở':'● Chưa mở'}</span>
+      </div>
+      <div class="card-body">
+        <div style="text-align:center;padding:24px 0 16px">
+          ${!status.quizOpen ? `
+            <div style="font-size:48px;margin-bottom:14px">⏳</div>
+            <div style="font-size:18px;font-weight:700;color:var(--navy);margin-bottom:8px">Bài test chưa được mở</div>
+            <div class="alert alert-warning">QA sẽ thông báo khi bắt đầu. Vui lòng chờ.</div>
+          ` : `
+            <div style="font-size:48px;margin-bottom:14px">📝</div>
+            <div style="font-size:18px;font-weight:700;color:var(--navy);margin-bottom:6px">Sẵn sàng làm bài</div>
+            <div style="font-size:13px;color:var(--gray3);margin-bottom:24px">30 câu · 45 phút · Đạt từ 25/30</div>
+            <div id="quiz-error" class="alert alert-error" style="display:none;text-align:left"></div>
+            <div class="field" style="text-align:left">
+              <label>Mã nhân viên của bạn</label>
+              <input class="input-big" id="quiz-code" placeholder="VD: NV1001"
+                onkeydown="if(event.key==='Enter')startQuiz()"
+                autocomplete="off" spellcheck="false" autocorrect="off">
+            </div>
+            <div id="quiz-name-confirm" style="display:none;background:var(--teal-lt);border:1.5px solid var(--teal-md);border-radius:8px;padding:11px 16px;font-size:14px;color:var(--teal);font-weight:700;margin-bottom:16px;text-align:center"></div>
+            <button class="btn btn-primary btn-lg" onclick="startQuiz()">Bắt đầu làm bài →</button>
+          `}
+        </div>
+      </div>
+    </div>`;
+}
+
+async function startQuiz() {
+  const code = document.getElementById('quiz-code')?.value.trim().toUpperCase();
+  if (!code) { showError('quiz-error','Vui lòng nhập mã nhân viên.'); return; }
+  const sessionId = appState.currentSession?.['Session ID'];
+  const btn = document.querySelector('#view-quiz .btn-primary');
+  if (btn) { btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Đang tải...'; }
+  try {
+    const res = await gasGet({action:'getQuestions', maNV:code, sessionId});
+    if (!res.ok) {
+      if (res.alreadySubmitted) { renderQuizResult(res.result, code, true); return; }
+      showError('quiz-error', res.error || 'Có lỗi xảy ra.');
+      if (btn) { btn.disabled=false; btn.textContent='Bắt đầu làm bài →'; }
+      return;
+    }
+    appState.questions = res.questions;
+    appState.quizAnswers = {};
+    appState.quizSubmitted = false;
+    appState.quizMaNV = code;
+    appState.quizAttempt = res.attempt;
+    appState.currentQ = 0;
+    appState.timeLeft = (res.totalMinutes || 45) * 60;
+    clearInterval(appState.timerInt);
+    appState.timerInt = setInterval(tickTimer, 1000);
+    renderQuizQuestion();
+  } catch(e) {
+    showError('quiz-error','Lỗi kết nối. Vui lòng thử lại.');
+    if (btn) { btn.disabled=false; btn.textContent='Bắt đầu làm bài →'; }
+  }
+}
+
+function tickTimer() {
+  appState.timeLeft--;
+  const el = document.getElementById('quiz-timer');
+  if (el) {
+    el.textContent = '⏱ ' + fmtTime(appState.timeLeft);
+    if (appState.timeLeft <= 300) el.classList.add('warning');
+  }
+  if (appState.timeLeft <= 0) { clearInterval(appState.timerInt); submitQuiz(true); }
+}
+
+function fmtTime(s) {
+  return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+}
+
+function renderQuizQuestion() {
+  const q = appState.questions[appState.currentQ];
+  const total = appState.questions.length;
+  const answered = Object.keys(appState.quizAnswers).length;
+  const el = document.getElementById('quiz-content');
+  el.innerHTML = `
+    <div class="quiz-wrap">
+      <div class="quiz-header">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--navy)">${appState.quizMaNV}</div>
+          <div style="font-size:12px;color:var(--gray3)">Đã trả lời ${answered}/${total} câu</div>
+        </div>
+        <div class="quiz-timer" id="quiz-timer">⏱ ${fmtTime(appState.timeLeft)}</div>
+      </div>
+      <div class="progress-wrap"><div class="progress-bar" style="width:${Math.round(appState.currentQ/total*100)}%"></div></div>
+      <div class="q-card">
+        <div class="q-label">Câu ${appState.currentQ+1} / ${total}</div>
+        <div class="q-text">${q.text}</div>
+        ${q.options.map((opt,oi)=>`
+          <button class="opt-btn ${appState.quizAnswers[appState.currentQ]===oi?'selected':''}"
+            onclick="selectAns(${appState.currentQ},${oi})">
+            <div class="opt-letter">${LETTERS[oi]}</div>
+            <span>${opt||'(trống)'}</span>
+          </button>`).join('')}
+      </div>
+      <div class="quiz-nav">
+        <button class="btn btn-ghost btn-sm" onclick="qPrev()" ${appState.currentQ===0?'style="visibility:hidden"':''}>← Trước</button>
+        <div class="q-nav-dots">${appState.questions.map((_,i)=>`
+          <button class="q-dot ${appState.quizAnswers[i]!==undefined?'answered':''} ${i===appState.currentQ?'current':''}"
+            onclick="jumpQ(${i})" title="Câu ${i+1}"></button>`).join('')}</div>
+        ${appState.currentQ<total-1
+          ? `<button class="btn btn-primary btn-sm" onclick="qNext()">Tiếp →</button>`
+          : `<button class="btn btn-success btn-sm" onclick="confirmSubmit()">✓ Nộp bài</button>`}
+      </div>
+    </div>`;
+}
+
+function selectAns(qi,oi){ appState.quizAnswers[qi]=oi; renderQuizQuestion(); }
+function qNext(){ if(appState.currentQ<appState.questions.length-1){appState.currentQ++;renderQuizQuestion();} }
+function qPrev(){ if(appState.currentQ>0){appState.currentQ--;renderQuizQuestion();} }
+function jumpQ(i){ appState.currentQ=i; renderQuizQuestion(); }
+
+function confirmSubmit() {
+  const unanswered = appState.questions.length - Object.keys(appState.quizAnswers).length;
+  if (unanswered > 0 && !confirm(`Còn ${unanswered} câu chưa trả lời. Bạn có chắc muốn nộp bài?`)) return;
+  submitQuiz(false);
+}
+
+async function submitQuiz(autoSubmit) {
+  if (appState.quizSubmitted) return;
+  appState.quizSubmitted = true;
+  clearInterval(appState.timerInt);
+  const timeTaken = (appState.questions.length > 0 ? (45*60 - appState.timeLeft) : 0);
+  const el = document.getElementById('quiz-content');
+  el.innerHTML = '<div class="loading">⏳ Đang nộp bài...</div>';
+  try {
+    const res = await gasPost({
+      action:'submitQuiz',
+      maNV: appState.quizMaNV,
+      sessionId: appState.currentSession?.['Session ID'],
+      answers: appState.quizAnswers,
+      timeTaken,
+    });
+    if (res.ok) renderQuizResult(res, appState.quizMaNV, false);
+    else { el.innerHTML = `<div class="alert alert-error">Lỗi nộp bài: ${res.error}</div>`; appState.quizSubmitted=false; }
+  } catch(e) {
+    el.innerHTML = `<div class="alert alert-error">Lỗi kết nối khi nộp bài. Vui lòng thử lại ngay.</div>`;
+    appState.quizSubmitted = false;
+  }
+}
+
+function renderQuizResult(r, maNV, alreadyDone) {
+  const pass = r.pass || r['Kết quả']==='ĐẠT';
+  const correct = r.correct || r['Số câu đúng'] || 0;
+  const total = r.total || r['Tổng số câu'] || 30;
+  const pct = r.pct || r['Điểm'] || Math.round(correct/total*100);
+  let detail = [];
+  try { detail = typeof r.detail==='string' ? JSON.parse(r.detail) : (r.detail||[]); } catch{}
+
+  document.getElementById('quiz-content').innerHTML = `
+    <div class="quiz-wrap">
+      <div class="result-card">
+        <div class="score-ring ${pass?'pass':'fail'}">
+          <div class="score-pct ${pass?'pass':'fail'}">${pct}%</div>
+          <div style="font-size:11px;color:var(--gray3);margin-top:2px">${correct}/${total}</div>
+        </div>
+        <div class="verdict ${pass?'pass':'fail'}">${pass?'✅ ĐẠT':'❌ KHÔNG ĐẠT'}</div>
+        <div style="font-size:13px;color:var(--gray3);margin-bottom:16px">${maNV} · Ngưỡng đạt: 25/30 (83%)</div>
+        <div class="alert ${pass?'alert-success':'alert-error'}" style="margin-bottom:${pass?'20':'16'}px">
+          ${pass ? '🎉 Chúc mừng! Bạn đã hoàn thành bài kiểm tra ATTP. Giơ màn hình này cho QA xác nhận.' 
+                 : '📚 Chưa đạt. Giơ màn hình cho QA — QA sẽ phê duyệt nếu bạn muốn làm lại.'}
+        </div>
+        ${alreadyDone?'<div class="alert alert-warning" style="margin-bottom:16px">Bạn đã nộp bài trước đó.</div>':''}
+        ${detail.length ? `
+        <div class="breakdown">
+          <div style="font-size:11px;font-weight:700;color:var(--gray4);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Chi tiết từng câu</div>
+          ${detail.map((d,i)=>{
+            const q = appState.questions[i] || {};
+            const chosenTxt = d.chosen>=0 ? LETTERS[d.chosen]+(q.options?'. '+q.options[d.chosen]:'') : 'Chưa trả lời';
+            const correctTxt = LETTERS[d.correct]+(q.options?'. '+q.options[d.correct]:'');
+            return `<div class="b-row">
+              <span style="font-size:18px;flex-shrink:0">${d.isCorrect?'✅':'❌'}</span>
+              <div><div style="font-size:13px;color:var(--text)">${q.text||'Câu '+(i+1)}</div>
+              <div style="font-size:12px;color:${d.isCorrect?'var(--green)':'var(--red)'}">
+                Bạn chọn: ${chosenTxt}${!d.isCorrect?' · Đáp án đúng: '+correctTxt:''}</div></div>
+            </div>`;
+          }).join('')}
+        </div>` : ''}
+        <button class="btn btn-ghost" style="width:100%;margin-top:16px" onclick="renderQuizEntry()">← NV tiếp theo</button>
+      </div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// QA LOGIN
+// ══════════════════════════════════════════════════════════════
+async function doQALogin() {
+  const pw = document.getElementById('qa-pw-input').value;
+  const err = document.getElementById('qa-login-error');
+  err.style.display='none';
+  try {
+    const res = await gasPost({action:'qaLogin', password:pw});
+    if (res.ok) {
+      appState.qaPassword = pw;
+      setQAMode(true);
+      showToast('✅ Đăng nhập QA thành công');
+      gotoTab('dashboard');
+    } else { err.textContent = 'Sai mật khẩu.'; err.style.display='block'; }
+  } catch { err.textContent='Lỗi kết nối.'; err.style.display='block'; }
+}
+
+// ══════════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════════
+async function renderDashboard() {
+  const el = document.getElementById('dashboard-content');
+  el.innerHTML = '<div class="loading">⏳ Đang tải dashboard...</div>';
+  try {
+    const sessionId = appState.currentSession?.['Session ID'];
+    const res = await gasGet({action:'getDashboard', sessionId, password:appState.qaPassword});
+    if (!res.ok) { el.innerHTML=`<div class="alert alert-error">${res.error}</div>`; return; }
+    appState.dashboardData = res;
+    appState.sessionStatus = {checkinOpen:res.checkinOpen, quizOpen:res.quizOpen};
+    renderDashboardContent(res);
+  } catch(e) { el.innerHTML='<div class="alert alert-error">Lỗi tải dashboard.</div>'; }
+}
+
+function renderDashboardContent(d) {
+  const el = document.getElementById('dashboard-content');
+  const {stats, nvData, quizOpen, checkinOpen, sessionId} = d;
+  const rows = (nvData||[]).map(nv => `
+    <tr>
+      <td><strong>${nv.maNV}</strong></td>
+      <td>${nv.hoTen}</td>
+      <td>${nv.store||''}</td>
+      <td><span class="badge ${nv.location==='HN'?'badge-purple':'badge-teal'}">${nv.location||''}</span></td>
+      <td>${nv.checkinTime ? nv.checkinTime + (nv.isWalkIn?' <span class="badge badge-purple">Walk-in</span>':nv.sessionSwitch?' <span class="badge badge-amber">⚠ Đổi ca</span>':'') : '—'}</td>
+      <td>${nv.attempts>0 ? `<span class="badge ${nv.latestResult==='ĐẠT'?'badge-green':nv.latestResult==='KHÔNG ĐẠT'?'badge-red':'badge-amber'}">${nv.latestResult||'Chưa nộp'}</span>` : '<span class="badge badge-gray">Chưa làm</span>'}</td>
+      <td style="font-size:12px;color:var(--gray3)">${nv.attempts||0} lần</td>
+      <td>
+        ${nv.latestResult==='KHÔNG ĐẠT' ? `<button class="btn btn-amber btn-sm" onclick="openApproveRetake('${nv.maNV}','${nv.hoTen}')">Duyệt làm lại</button>` : ''}
+        ${!nv.checkinTime ? `<button class="btn btn-ghost btn-sm" onclick="qaApproveCheckin('${nv.maNV}','${nv.hoTen}')">Approve CI</button>` : ''}
+      </td>
+    </tr>`).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+      <div>
+        <div style="font-size:18px;font-weight:800;color:var(--navy)">${appState.currentSession?.['Tên đợt']||'Dashboard'}</div>
+        <div style="font-size:12px;color:var(--gray3)">${appState.currentSession?.['Ngày']||''} · Session: ${sessionId||''}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="renderDashboard()">↻ Làm mới</button>
+        <button class="btn ${checkinOpen?'btn-danger':'btn-success'} btn-sm" onclick="toggleCheckin()">
+          ${checkinOpen?'🔒 Đóng checkin':'🔓 Mở checkin'}
+        </button>
+        <button class="btn ${quizOpen?'btn-danger':'btn-success'} btn-sm" onclick="toggleQuiz()">
+          ${quizOpen?'🔒 Khóa quiz':'🔓 Mở quiz'}
+        </button>
+        <button class="btn btn-amber btn-sm" onclick="exportData()">⬇ Xuất báo cáo</button>
+      </div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat"><div class="stat-val">${stats.total||0}</div><div class="stat-lbl">Tổng đăng ký</div></div>
+      <div class="stat"><div class="stat-val" style="color:#7ee8ed">${stats.checkedIn||0}</div><div class="stat-lbl">Đã checkin</div></div>
+      <div class="stat"><div class="stat-val" style="color:#f9d46e">${stats.submitted||0}</div><div class="stat-lbl">Đã nộp bài</div></div>
+      <div class="stat"><div class="stat-val" style="color:#6fdc9b">${stats.passed||0}</div><div class="stat-lbl">Đạt</div></div>
+      <div class="stat"><div class="stat-val" style="color:#f4817a">${stats.failed||0}</div><div class="stat-lbl">Không đạt</div></div>
+    </div>
+
+    <div class="random-box">
+      <div class="random-names">
+        <div class="random-title">🎲 Random Call — Double check có mặt</div>
+        <div class="random-list" id="random-list">Nhấn nút để chọn ngẫu nhiên 10 NV</div>
+        <div style="font-size:11px;color:var(--purple);margin-top:4px" id="random-remaining"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-purple" onclick="doRandomCall()">🎲 Random 10</button>
+        <button class="btn btn-ghost btn-sm" onclick="resetRandomPool()">↺ Reset pool</button>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <input type="text" id="dash-search" placeholder="🔍 Tìm tên / mã NV..." style="padding:8px 12px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px;width:220px"
+        oninput="filterDashTable()">
+      <select id="dash-filter-store" onchange="filterDashTable()" style="padding:8px 12px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px">
+        <option value="">Tất cả store</option>
+        <option>LB</option><option>TB</option><option>SYR</option>
+        <option>BT</option><option>TD</option><option>PMH</option><option>VC</option><option>CR</option><option>Depot HAN</option><option>Depot HCM</option>
+      </select>
+      <select id="dash-filter-result" onchange="filterDashTable()" style="padding:8px 12px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px">
+        <option value="">Tất cả kết quả</option>
+        <option>ĐẠT</option><option>KHÔNG ĐẠT</option><option value="notest">Chưa làm</option>
+      </select>
+      <select id="dash-filter-location" onchange="filterDashTable()" style="padding:8px 12px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px">
+        <option value="">HN + HCM</option><option>HN</option><option>HCM</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table id="dash-table">
+        <thead><tr>
+          <th>Mã NV</th><th>Họ tên</th><th>Store</th><th>Location</th>
+          <th>Giờ CI</th><th>Kết quả</th><th>Lần làm</th><th>Action</th>
+        </tr></thead>
+        <tbody id="dash-tbody">${rows||'<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--gray3)">Chưa có dữ liệu</td></tr>'}</tbody>
+      </table>
+    </div>`;
+
+  // Init random pool
+  if (!appState.randomCallPool.length && nvData?.length) {
+    appState.randomCallPool = [...nvData].sort(()=>Math.random()-.5);
+  }
+}
+
+function filterDashTable() {
+  const search = document.getElementById('dash-search').value.toLowerCase();
+  const store = document.getElementById('dash-filter-store').value;
+  const result = document.getElementById('dash-filter-result').value;
+  const location = document.getElementById('dash-filter-location').value;
+  const rows = document.querySelectorAll('#dash-tbody tr');
+  rows.forEach(row => {
+    const cells = row.querySelectorAll('td');
+    if (!cells.length) return;
+    const maNV = cells[0]?.textContent.toLowerCase();
+    const hoTen = cells[1]?.textContent.toLowerCase();
+    const rowStore = cells[2]?.textContent;
+    const rowLoc = cells[3]?.textContent;
+    const rowResult = cells[5]?.textContent;
+    const matchSearch = !search || maNV.includes(search) || hoTen.includes(search);
+    const matchStore = !store || rowStore.includes(store);
+    const matchLoc = !location || rowLoc.includes(location);
+    const matchResult = !result || (result==='notest' ? rowResult.includes('Chưa') : rowResult.includes(result));
+    row.style.display = (matchSearch && matchStore && matchLoc && matchResult) ? '' : 'none';
+  });
+}
+
+function doRandomCall() {
+  const nvData = appState.dashboardData?.nvData || [];
+  const checkedIn = nvData.filter(nv => nv.checkinTime);
+  if (!checkedIn.length) { showToast('Chưa có NV checkin','error'); return; }
+
+  // Pool chống trùng
+  if (appState.randomCallPool.length < 10) {
+    appState.randomCallPool = [...checkedIn].sort(()=>Math.random()-.5);
+    document.getElementById('random-remaining').textContent = '↺ Pool đã được reset';
+  }
+  const picked = appState.randomCallPool.splice(0,10);
+  document.getElementById('random-list').innerHTML = picked.map((nv,i)=>`<span style="margin-right:12px">${i+1}. ${nv.hoTen} <span style="font-size:11px;opacity:.7">(${nv.maNV})</span></span>`).join('<br>');
+  const rem = appState.randomCallPool.length;
+  document.getElementById('random-remaining').textContent = `Còn ${rem} NV trong pool`;
+}
+
+function resetRandomPool() {
+  appState.randomCallPool = [];
+  const nvData = appState.dashboardData?.nvData || [];
+  appState.randomCallPool = [...nvData.filter(nv=>nv.checkinTime)].sort(()=>Math.random()-.5);
+  document.getElementById('random-list').textContent = 'Pool đã reset. Nhấn Random 10 để bắt đầu.';
+  document.getElementById('random-remaining').textContent = `${appState.randomCallPool.length} NV trong pool`;
+  showToast('✅ Đã reset pool random');
+}
+
+async function toggleQuiz() {
+  const newStatus = !appState.sessionStatus.quizOpen;
+  try {
+    const res = await gasPost({action:'toggleQuiz', password:appState.qaPassword, sessionId:appState.currentSession?.['Session ID'], open:newStatus});
+    if (res.ok) { appState.sessionStatus.quizOpen=newStatus; renderDashboard(); showToast(newStatus?'🔓 Đã mở quiz':'🔒 Đã khóa quiz'); }
+  } catch { showToast('Lỗi kết nối','error'); }
+}
+async function toggleCheckin() {
+  const newStatus = !appState.sessionStatus.checkinOpen;
+  try {
+    const res = await gasPost({action:'toggleCheckin', password:appState.qaPassword, sessionId:appState.currentSession?.['Session ID'], open:newStatus});
+    if (res.ok) { appState.sessionStatus.checkinOpen=newStatus; renderDashboard(); showToast(newStatus?'🔓 Đã mở checkin':'🔒 Đã đóng checkin'); }
+  } catch { showToast('Lỗi kết nối','error'); }
+}
+
+// Approve retake
+let _retakeMaNV = '', _retakeHoTen = '';
+function openApproveRetake(maNV, hoTen) {
+  _retakeMaNV=maNV; _retakeHoTen=hoTen;
+  document.getElementById('retake-nv-name').textContent = hoTen+' ('+maNV+')';
+  document.getElementById('retake-note').value='';
+  document.getElementById('modal-approve-retake').classList.remove('hidden');
+}
+async function submitApproveRetake() {
+  try {
+    const res = await gasPost({action:'approveRetake', password:appState.qaPassword, maNV:_retakeMaNV, sessionId:appState.currentSession?.['Session ID'], note:document.getElementById('retake-note').value});
+    if (res.ok) { closeModal('modal-approve-retake'); showToast('✅ Đã phê duyệt làm lại'); renderDashboard(); }
+    else showToast(res.error,'error');
+  } catch { showToast('Lỗi kết nối','error'); }
+}
+
+async function qaApproveCheckin(maNV, hoTen) {
+  if (!confirm(`Approve checkin thủ công cho ${hoTen} (${maNV})?`)) return;
+  try {
+    const res = await gasPost({action:'approveCheckin', password:appState.qaPassword, maNV, hoTen, sessionId:appState.currentSession?.['Session ID'], store:'', dept:'', isWalkIn:true});
+    if (res.ok) { showToast('✅ Đã approve checkin'); renderDashboard(); }
+    else showToast(res.error,'error');
+  } catch { showToast('Lỗi kết nối','error'); }
+}
+
+// Export
+async function exportData() {
+  const el = document.getElementById('dashboard-content').querySelector('.btn-amber');
+  if (el) { el.disabled=true; el.textContent='⏳ Đang tạo...'; }
+  try {
+    const res = await gasGet({action:'exportExcel', sessionId:appState.currentSession?.['Session ID'], password:appState.qaPassword});
+    if (!res.ok) { showToast(res.error,'error'); return; }
+    generateExcelAndPDF(res);
+  } catch { showToast('Lỗi xuất báo cáo','error'); }
+  finally { if(el){el.disabled=false;el.textContent='⬇ Xuất báo cáo';} }
+}
+
+function generateExcelAndPDF(data) {
+  // Tạo CSV (Excel-compatible)
+  const {session, nvList, results} = data;
+  const resultMap = {};
+  results.forEach(r => resultMap[r['Mã NV']?.toUpperCase()] = r);
+
+  const csvRows = [
+    ['BÁO CÁO KẾT QUẢ TRAINING ATTP'],
+    ['Phiên:', session['Tên đợt']||''],
+    ['Ngày:', session['Ngày']||''],
+    [],
+    ['Mã NV','Họ tên','Dept','Store','Location','Giờ checkin','Số lần làm','Điểm (%)','Kết quả'],
+    ...(nvList||[]).map(nv => {
+      const r = resultMap[nv['Mã NV']?.toUpperCase()];
+      return [nv['Mã NV'],nv['Họ tên'],nv['Dept'],nv['Store'],nv['Location'],nv['Thời gian check-in'],nv['Lần làm thứ']||0,r?r['Điểm']:'',r?r['Kết quả']:'Chưa làm'];
+    }),
+    [],
+    ['TỔNG KẾT','','','','','','','',`ĐẠT: ${results.filter(r=>r['Kết quả']==='ĐẠT').length}/${results.length}`],
+  ];
+
+  const csv = csvRows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'BaoCao_ATTP_'+( session['Ngày']||'').replace(/\//g,'-')+'.csv';
+  a.click();
+
+  // PDF via print
+  const printWin = window.open('','_blank');
+  printWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Báo cáo ATTP</title>
+    <style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px}
+    h1{font-size:18px;color:#1a2e4a;margin-bottom:4px}
+    h2{font-size:13px;color:#555;font-weight:normal;margin-bottom:20px}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th{background:#1a2e4a;color:#fff;padding:8px;text-align:left;font-size:11px}
+    td{padding:7px 8px;border-bottom:1px solid #eee;font-size:11px}
+    .pass{color:#1a7a46;font-weight:bold}.fail{color:#c0392b;font-weight:bold}
+    .summary{margin-top:20px;padding:12px;background:#f0f8f0;border-left:4px solid #1a7a46;border-radius:4px}
+    @media print{button{display:none}}</style></head><body>
+    <h1>BÁO CÁO KẾT QUẢ TRAINING ATTP</h1>
+    <h2>${session['Tên đợt']||''} &nbsp;|&nbsp; Ngày: ${session['Ngày']||''}</h2>
+    <table><thead><tr><th>STT</th><th>Mã NV</th><th>Họ tên</th><th>Store</th><th>Location</th><th>Điểm (%)</th><th>Kết quả</th></tr></thead>
+    <tbody>${(nvList||[]).map((nv,i)=>{
+      const r = resultMap[nv['Mã NV']?.toUpperCase()];
+      return '<tr><td>'+(i+1)+'</td><td>'+nv['Mã NV']+'</td><td>'+nv['Họ tên']+'</td><td>'+nv['Store']+'</td><td>'+nv['Location']+'</td><td>'+(r?r['Điểm']:'—')+'</td><td class="'+(r?r['Kết quả']==='ĐẠT'?'pass':'fail':'')+'">'+( r?r['Kết quả']:'Chưa làm')+'</td></tr>';
+    }).join('')}</tbody></table>
+    <div class="summary"><strong>Tổng kết:</strong> ${results.filter(r=>r['Kết quả']==='ĐẠT').length} đạt / ${results.length} nộp bài / ${nvList?.length||0} tổng đăng ký</div>
+    <br><button onclick="window.print()">🖨 In PDF</button>
+    </body></html>`);
+  printWin.document.close();
+  showToast('✅ Đã tạo CSV và mở cửa sổ PDF');
+}
+
+// ══════════════════════════════════════════════════════════════
+// ADMIN
+// ══════════════════════════════════════════════════════════════
+async function renderAdmin() {
+  const el = document.getElementById('admin-content');
+
+  // Setup banner nếu chưa cấu hình GAS
+  const needsSetup = GAS_URL === 'AKfycbzyAhaaHb-8BKA_u51hF4zmFkv7488yiq3N4KV8-fnOFQaFJFCUFWkiLM18zgEw70B0hw';
+
+  let nvRes, qRes;
+  try {
+    [nvRes, qRes] = await Promise.all([
+      gasGet({action:'getNVList', sessionId:appState.currentSession?.['Session ID'], password:appState.qaPassword}),
+      gasGet({action:'getNVList', password:appState.qaPassword}),
+    ]);
+  } catch { nvRes={ok:false}; qRes={ok:false}; }
+
+  const nvList = nvRes?.nvList || [];
+  const qCount = nvRes?.questionCount || 0;
+
+  el.innerHTML = `
+    ${needsSetup ? `<div class="setup-banner">
+      <h3>⚙️ Cần cấu hình GAS URL</h3>
+      <p>Mở file <code>index.html</code> và thay <code>AKfycbzyAhaaHb-8BKA_u51hF4zmFkv7488yiq3N4KV8-fnOFQaFJFCUFWkiLM18zgEw70B0hw</code> bằng URL của Google Apps Script Web App.</p>
+      <p>Xem hướng dẫn chi tiết trong file <code>HUONG_DAN_DEPLOY.md</code>.</p>
+    </div>` : ''}
+
+    <div class="admin-section">
+      <h4>📅 Phiên đào tạo</h4>
+      <div class="card"><div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-weight:700;color:var(--navy)">${appState.currentSession?.['Tên đợt']||'Chưa có phiên'}</div>
+          <div style="font-size:12px;color:var(--gray3)">${appState.currentSession?.['Ngày']||''} · ${appState.currentSession?.['Session ID']||''}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('modal-create-session').classList.remove('hidden')">+ Tạo phiên mới</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadSessions()">↺ Đổi phiên</button>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="admin-section">
+      <h4>👥 Import danh sách NV (${nvList.length} NV hiện tại)</h4>
+      <div class="card"><div class="card-body">
+        <div class="alert alert-info" style="margin-bottom:14px">
+          📋 Template CSV: <strong>Mã NV, Họ tên, Dept, Store</strong> — mỗi dòng 1 NV. Không cần header.
+        </div>
+        <div class="field">
+          <label>Upload file CSV / Excel (.csv)</label>
+          <input type="file" id="import-nv-file" accept=".csv,.txt" onchange="previewImportNV(event)" style="padding:8px">
+        </div>
+        <div id="import-nv-preview" style="font-size:13px;color:var(--gray3);margin-bottom:12px"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="doImportNV('append')">+ Thêm vào danh sách</button>
+          <button class="btn btn-danger btn-sm" onclick="doImportNV('replace')">⟳ Thay thế toàn bộ</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">⬇ Download template</button>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="admin-section">
+      <h4>📝 Ngân hàng câu hỏi (${qCount} câu)</h4>
+      <div class="card"><div class="card-body">
+        <div class="alert alert-info" style="margin-bottom:14px">
+          Template: <strong>Mã câu, Nội dung, A, B, C, D, Đáp án đúng (0-3)</strong>
+        </div>
+        <div class="field">
+          <label>Upload câu hỏi từ CSV</label>
+          <input type="file" id="import-q-file" accept=".csv,.txt" onchange="previewImportQ(event)" style="padding:8px">
+        </div>
+        <div id="import-q-preview" style="font-size:13px;color:var(--gray3);margin-bottom:12px"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="doImportQ('append')">+ Thêm câu hỏi</button>
+          <button class="btn btn-danger btn-sm" onclick="doImportQ('replace')">⟳ Thay thế toàn bộ</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadQTemplate()">⬇ Template câu hỏi</button>
+        </div>
+      </div></div>
+    </div>`;
+}
+
+// Import NV
+let _nvImportRows = [];
+function previewImportNV(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const lines = ev.target.result.split(/\r?\n/).filter(l=>l.trim());
+    _nvImportRows = [];
+    lines.forEach(line => {
+      const parts = line.split(/,|\t/).map(p=>p.replace(/^"|"$/g,'').trim());
+      if (parts.length >= 2 && parts[0] && !/mã nv|họ tên|hoTen|maNV|stt/i.test(parts[0])) {
+        _nvImportRows.push({maNV:parts[0].toUpperCase(), hoTen:parts[1]||'', dept:parts[2]||'', store:parts[3]||''});
+      }
+    });
+    document.getElementById('import-nv-preview').textContent = `→ Đọc được ${_nvImportRows.length} NV. Nhấn "Thêm" hoặc "Thay thế" để import.`;
+  };
+  reader.readAsText(file,'utf-8');
+}
+async function doImportNV(mode) {
+  if (!_nvImportRows.length) { showToast('Chưa chọn file hoặc file trống','error'); return; }
+  if (mode==='replace' && !confirm(`Xác nhận XÓA toàn bộ và thay bằng ${_nvImportRows.length} NV từ file?`)) return;
+  try {
+    const res = await gasPost({action:'importNV', password:appState.qaPassword, rows:_nvImportRows, sessionId:appState.currentSession?.['Session ID'], mode});
+    if (res.ok) { showToast(`✅ Đã import ${res.added} NV (bỏ qua ${res.skipped} trùng)`); renderAdmin(); }
+    else showToast(res.error,'error');
+  } catch { showToast('Lỗi kết nối','error'); }
+}
+
+// Import câu hỏi
+let _qImportRows = [];
+function previewImportQ(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const lines = ev.target.result.split(/\r?\n/).filter(l=>l.trim());
+    _qImportRows = [];
+    lines.forEach(line => {
+      const parts = line.split(/,|\t/).map(p=>p.replace(/^"|"$/g,'').trim());
+      if (parts.length >= 6 && parts[1] && !/nội dung|content/i.test(parts[1])) {
+        _qImportRows.push({id:parts[0], text:parts[1], a:parts[2], b:parts[3], c:parts[4], d:parts[5], correct:parseInt(parts[6])||0});
+      }
+    });
+    document.getElementById('import-q-preview').textContent = `→ Đọc được ${_qImportRows.length} câu hỏi.`;
+  };
+  reader.readAsText(file,'utf-8');
+}
+async function doImportQ(mode) {
+  if (!_qImportRows.length) { showToast('Chưa chọn file','error'); return; }
+  if (mode==='replace' && !confirm(`Thay thế toàn bộ ngân hàng câu hỏi bằng ${_qImportRows.length} câu mới?`)) return;
+  try {
+    const res = await gasPost({action:'importQuestions', password:appState.qaPassword, rows:_qImportRows, mode});
+    if (res.ok) { showToast(`✅ Đã import ${res.added} câu hỏi`); renderAdmin(); }
+    else showToast(res.error,'error');
+  } catch { showToast('Lỗi kết nối','error'); }
+}
+
+function downloadTemplate() {
+  const csv = 'Mã NV,Họ tên,Bộ phận,Store\nNV1001,Nguyễn Văn A,Kitchen,BT\nNV1002,Trần Thị B,Lounge,LB\nNV1003,Lê Văn C,Stock,SYR';
+  const blob = new Blob(['\ufeff'+csv],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='Template_DanhSachNV.csv'; a.click();
+}
+function downloadQTemplate() {
+  const csv = 'Mã câu,Nội dung câu hỏi,Đáp án A,Đáp án B,Đáp án C,Đáp án D,Đáp án đúng (0-3)\nCH001,Nhiệt độ nguy hiểm cho thực phẩm là?,Dưới 5°C,5°C - 60°C,Trên 60°C,Tất cả,1';
+  const blob = new Blob(['\ufeff'+csv],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='Template_CauHoi.csv'; a.click();
+}
+
+async function loadSessions() {
+  try {
+    const res = await gasGet({action:'getSessions'});
+    if (!res.ok) return;
+    const opts = res.sessions.map(s=>`<option value="${s['Session ID']}">${s['Tên đợt']} (${s['Ngày']})</option>`).join('');
+    const sel = document.createElement('select');
+    sel.innerHTML = opts;
+    sel.style.cssText='padding:8px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px;margin-top:8px;width:100%';
+    sel.onchange = () => {
+      const s = res.sessions.find(x=>x['Session ID']===sel.value);
+      if (s) { appState.currentSession=s; renderAdmin(); showToast('✅ Đã chuyển sang phiên: '+s['Tên đợt']); }
+    };
+    const card = document.querySelector('#admin-content .admin-section .card-body');
+    if (card) card.appendChild(sel);
+  } catch { showToast('Lỗi tải phiên','error'); }
+}
+
+async function submitCreateSession() {
+  const name = document.getElementById('ns-name').value.trim();
+  const date = document.getElementById('ns-date').value.trim();
+  const start = document.getElementById('ns-start').value.trim();
+  if (!name||!date) { showToast('Vui lòng nhập đủ thông tin','error'); return; }
+  try {
+    const res = await gasPost({action:'createSession', password:appState.qaPassword, name, date, startTime:start});
+    if (res.ok) {
+      appState.currentSession = {['Session ID']:res.sessionId,'Tên đợt':name,'Ngày':date};
+      closeModal('modal-create-session');
+      showToast('✅ Đã tạo phiên mới: '+name);
+      renderAdmin();
+    } else showToast(res.error,'error');
+  } catch { showToast('Lỗi kết nối','error'); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════
+function showError(id, msg) {
+  const el=document.getElementById(id); if(!el) return;
+  el.textContent=msg; el.style.display='block';
+  setTimeout(()=>el.style.display='none',5000);
+}
+function showToast(msg, type='') {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast'+(type?' '+type:'');
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800);
+}
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+// ══════════════════════════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════════════════════════
+async function boot() {
+  // Sync offline queue nếu có
+  if (appState.offlineQueue.length && navigator.onLine) syncOfflineQueue();
+
+  // Lấy session hiện tại
+  try {
+    if (GAS_URL !== 'AKfycbzyAhaaHb-8BKA_u51hF4zmFkv7488yiq3N4KV8-fnOFQaFJFCUFWkiLM18zgEw70B0hw') {
+      const res = await gasGet({action:'getSession'});
+      if (res.ok && res.session) {
+        appState.currentSession = res.session;
+        const status = await gasGet({action:'getQuizStatus', sessionId:res.session['Session ID']});
+        if (status.ok) appState.sessionStatus = {checkinOpen:status.checkinOpen, quizOpen:status.quizOpen};
+      }
+    }
+  } catch {}
+  renderCheckin();
+}
+boot();
+</script>
+</body>
+</html>
