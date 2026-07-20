@@ -1155,11 +1155,46 @@ function previewImportNV(e) {
 async function doImportNV(mode) {
   if (!_nvImportRows.length) { showToast('Chưa chọn file hoặc file trống','error'); return; }
   if (mode==='replace' && !confirm(`Xác nhận XÓA toàn bộ và thay bằng ${_nvImportRows.length} NV từ file?`)) return;
+
+  // Chia batch 50 NV/lần để tránh payload quá lớn
+  const BATCH = 50;
+  const total = _nvImportRows.length;
+  let added = 0, skipped = 0, errors = 0;
+  const sessionId = appState.currentSession?.['Session ID'];
+
+  // Hiện progress
+  const btn = document.querySelector('#admin-content .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = `Đang import 0/${total}...`; }
+
   try {
-    const res = await gasPost({action:'importNV', password:appState.qaPassword, rows:_nvImportRows, sessionId:appState.currentSession?.['Session ID'], mode});
-    if (res.ok) { showToast(`✅ Đã import ${res.added} NV (bỏ qua ${res.skipped} trùng)`); renderAdmin(); }
-    else showToast(res.error,'error');
-  } catch { showToast('Lỗi kết nối','error'); }
+    for (let i = 0; i < total; i += BATCH) {
+      const batch = _nvImportRows.slice(i, i + BATCH);
+      // Lần đầu dùng mode gốc, các batch sau dùng append
+      const batchMode = (i === 0) ? mode : 'append';
+      const res = await gasPost({
+        action:'importNV',
+        password: appState.qaPassword,
+        rows: batch,
+        sessionId,
+        mode: batchMode
+      });
+      if (res.ok) {
+        added += res.added || 0;
+        skipped += res.skipped || 0;
+      } else {
+        errors++;
+        console.error('Batch error:', res.error);
+      }
+      // Cập nhật progress
+      if (btn) btn.textContent = `Đang import ${Math.min(i+BATCH, total)}/${total}...`;
+    }
+    showToast(`✅ Đã import ${added} NV (bỏ qua ${skipped} trùng${errors?', lỗi '+errors+' batch':''})`, errors?'error':'');
+    renderAdmin();
+  } catch(e) {
+    showToast('Lỗi kết nối: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '+ Thêm vào danh sách'; }
+  }
 }
 
 // Import câu hỏi
