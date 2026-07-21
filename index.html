@@ -718,22 +718,55 @@ async function submitQuiz(autoSubmit) {
   appState.quizSubmitted = true;
   clearInterval(appState.timerInt);
   const timeTaken = (appState.questions.length > 0 ? (45*60 - appState.timeLeft) : 0);
-  const el = document.getElementById('quiz-content');
-  el.innerHTML = '<div class="loading">⏳ Đang nộp bài...</div>';
-  try {
-    const res = await gasPost({
-      action:'submitQuiz',
-      maNV: appState.quizMaNV,
-      sessionId: appState.currentSession?.['Session ID'],
-      answers: appState.quizAnswers,
-      timeTaken,
-    });
-    if (res.ok) renderQuizResult(res, appState.quizMaNV, false);
-    else { el.innerHTML = `<div class="alert alert-error">Lỗi nộp bài: ${res.error}</div>`; appState.quizSubmitted=false; }
-  } catch(e) {
-    el.innerHTML = `<div class="alert alert-error">Lỗi kết nối khi nộp bài. Vui lòng thử lại ngay.</div>`;
-    appState.quizSubmitted = false;
+
+  // Tính kết quả NGAY trên client — không chờ server
+  const total = appState.questions.length;
+  let correct = 0;
+  const detail = appState.questions.map((q, qi) => {
+    const chosen = appState.quizAnswers[qi] !== undefined ? parseInt(appState.quizAnswers[qi]) : -1;
+    const isCorrect = chosen === q.correctIndex;
+    if (isCorrect) correct++;
+    return { id: q.id, chosen, correct: q.correctIndex, isCorrect };
+  });
+  const pct = Math.round(correct / total * 100);
+  const pass = correct >= 25; // ngưỡng 25/30
+
+  // Hiện kết quả NGAY cho NV — không chờ GAS
+  const localResult = { correct, total, pct, pass, detail };
+  renderQuizResult(localResult, appState.quizMaNV, false);
+
+  // Gửi lên GAS async (retry 3 lần nếu lỗi) — chạy nền, không block UI
+  const payload = {
+    action: 'submitQuiz',
+    maNV: appState.quizMaNV,
+    sessionId: appState.currentSession?.['Session ID'],
+    answers: appState.quizAnswers,
+    timeTaken,
+    clientResult: { correct, pct, pass } // gửi kèm để GAS verify
+  };
+  submitWithRetry(payload, 3);
+}
+
+// Gửi kết quả lên GAS với retry — chạy ngầm không ảnh hưởng UI
+async function submitWithRetry(payload, maxRetry) {
+  for (let i = 0; i < maxRetry; i++) {
+    try {
+      const res = await gasPost(payload);
+      if (res.ok) {
+        console.log('✅ Kết quả đã lưu lên server');
+        return;
+      }
+      if (res.alreadySubmitted) {
+        console.log('ℹ️ Đã lưu trước đó');
+        return;
+      }
+    } catch(e) {
+      console.warn(`Retry ${i+1}/${maxRetry}:`, e.message);
+    }
+    // Chờ trước khi retry: 2s, 5s, 10s
+    if (i < maxRetry - 1) await new Promise(r => setTimeout(r, [2000, 5000, 10000][i]));
   }
+  console.error('❌ Không thể lưu kết quả sau', maxRetry, 'lần thử');
 }
 
 function renderQuizResult(r, maNV, alreadyDone) {
@@ -752,10 +785,17 @@ function renderQuizResult(r, maNV, alreadyDone) {
           <div style="font-size:11px;color:var(--gray3);margin-top:2px">${correct}/${total}</div>
         </div>
         <div class="verdict ${pass?'pass':'fail'}">${pass?'✅ ĐẠT':'❌ KHÔNG ĐẠT'}</div>
-        <div style="font-size:13px;color:var(--gray3);margin-bottom:16px">${maNV} · Ngưỡng đạt: 25/30 (83%)</div>
+        <div style="font-size:13px;color:var(--gray3);margin-bottom:16px">
+          ${maNV} · ${appState.quizHoTen||''}<br>
+          <span style="font-size:12px">Nộp lúc: ${new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · Ngưỡng đạt: 25/30</span>
+        </div>
         <div class="alert ${pass?'alert-success':'alert-error'}" style="margin-bottom:${pass?'20':'16'}px">
-          ${pass ? '🎉 Chúc mừng! Bạn đã hoàn thành bài kiểm tra ATTP. Giơ màn hình này cho QA xác nhận.' 
-                 : '📚 Chưa đạt. Giơ màn hình cho QA — QA sẽ phê duyệt nếu bạn muốn làm lại.'}
+          ${pass ? '🎉 Chúc mừng! Bạn đã HOÀN THÀNH bài kiểm tra ATTP.' 
+                 : '📚 Bạn CHƯA ĐẠT. Liên hệ QA in-charge để được hỗ trợ.'}
+        </div>
+        <div style="background:var(--amber-lt);border:2px solid var(--amber);border-radius:10px;padding:14px 16px;margin-bottom:16px;text-align:center">
+          <div style="font-size:15px;font-weight:700;color:var(--amber);margin-bottom:4px">📱 GIƠ MÀN HÌNH NÀY CHO QA XÁC NHẬN</div>
+          <div style="font-size:13px;color:var(--gray4)">Sau khi QA xác nhận, bạn có thể ra về</div>
         </div>
         ${alreadyDone?'<div class="alert alert-warning" style="margin-bottom:16px">Bạn đã nộp bài trước đó.</div>':''}
         ${detail.length ? `
@@ -899,6 +939,14 @@ function renderDashboardContent(d) {
   if (!appState.randomCallPool.length && nvData?.length) {
     appState.randomCallPool = [...nvData].sort(()=>Math.random()-.5);
   }
+
+  // Auto-refresh dashboard mỗi 60 giây
+  clearInterval(appState._dashRefreshInt);
+  appState._dashRefreshInt = setInterval(() => {
+    if (document.getElementById('view-dashboard')?.classList.contains('active')) {
+      renderDashboard();
+    }
+  }, 60000);
 }
 
 function filterDashTable() {
@@ -1157,7 +1205,7 @@ async function doImportNV(mode) {
   if (mode==='replace' && !confirm(`Xác nhận XÓA toàn bộ và thay bằng ${_nvImportRows.length} NV từ file?`)) return;
 
   // Chia batch 50 NV/lần để tránh payload quá lớn
-  const BATCH = 50;
+  const BATCH = 10;
   const total = _nvImportRows.length;
   let added = 0, skipped = 0, errors = 0;
   const sessionId = appState.currentSession?.['Session ID'];
@@ -1187,6 +1235,8 @@ async function doImportNV(mode) {
       }
       // Cập nhật progress
       if (btn) btn.textContent = `Đang import ${Math.min(i+BATCH, total)}/${total}...`;
+      // Delay nhỏ giữa các batch để tránh rate limit
+      await new Promise(r => setTimeout(r, 300));
     }
     showToast(`✅ Đã import ${added} NV (bỏ qua ${skipped} trùng${errors?', lỗi '+errors+' batch':''})`, errors?'error':'');
     renderAdmin();
