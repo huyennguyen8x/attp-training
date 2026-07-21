@@ -344,7 +344,7 @@ tr:hover td{background:var(--gray0);}
 // ══════════════════════════════════════════════════════════════
 // CẤU HÌNH — THAY GAS_URL SAU KHI DEPLOY APPS SCRIPT
 // ══════════════════════════════════════════════════════════════
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzyAhaaHb-8BKA_u51hF4zmFkv7488yiq3N4KV8-fnOFQaFJFCUFWkiLM18zgEw70B0hw/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbz5IStXIMPJtbhQoBF32rXc90XHsy7L7j0-YFr2J9riPDAkI7v7O1UL1_E5LIB1wGJDtw/exec';
 const LETTERS = ['A','B','C','D'];
 const HN_STORES = ['LB','TB','SYR'];
 
@@ -1109,7 +1109,7 @@ async function renderAdmin() {
   const el = document.getElementById('admin-content');
 
   // Setup banner nếu chưa cấu hình GAS
-  const needsSetup = GAS_URL === 'AKfycbzyAhaaHb-8BKA_u51hF4zmFkv7488yiq3N4KV8-fnOFQaFJFCUFWkiLM18zgEw70B0hw';
+  const needsSetup = GAS_URL === 'AKfycbz5IStXIMPJtbhQoBF32rXc90XHsy7L7j0-YFr2J9riPDAkI7v7O1UL1_E5LIB1wGJDtw';
 
   let nvRes, qRes;
   try {
@@ -1125,7 +1125,7 @@ async function renderAdmin() {
   el.innerHTML = `
     ${needsSetup ? `<div class="setup-banner">
       <h3>⚙️ Cần cấu hình GAS URL</h3>
-      <p>Mở file <code>index.html</code> và thay <code>AKfycbzyAhaaHb-8BKA_u51hF4zmFkv7488yiq3N4KV8-fnOFQaFJFCUFWkiLM18zgEw70B0hw</code> bằng URL của Google Apps Script Web App.</p>
+      <p>Mở file <code>index.html</code> và thay <code>AKfycbz5IStXIMPJtbhQoBF32rXc90XHsy7L7j0-YFr2J9riPDAkI7v7O1UL1_E5LIB1wGJDtw</code> bằng URL của Google Apps Script Web App.</p>
       <p>Xem hướng dẫn chi tiết trong file <code>HUONG_DAN_DEPLOY.md</code>.</p>
     </div>` : ''}
 
@@ -1343,7 +1343,7 @@ async function boot() {
 
   // Lấy session hiện tại
   try {
-    if (GAS_URL !== 'AKfycbzyAhaaHb-8BKA_u51hF4zmFkv7488yiq3N4KV8-fnOFQaFJFCUFWkiLM18zgEw70B0hw') {
+    if (GAS_URL !== 'AKfycbz5IStXIMPJtbhQoBF32rXc90XHsy7L7j0-YFr2J9riPDAkI7v7O1UL1_E5LIB1wGJDtw') {
       const res = await gasGet({action:'getSession'});
       if (res.ok && res.session) {
         appState.currentSession = res.session;
