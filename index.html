@@ -855,20 +855,43 @@ async function renderDashboard() {
 function renderDashboardContent(d) {
   const el = document.getElementById('dashboard-content');
   const {stats, nvData, quizOpen, checkinOpen, sessionId} = d;
-  const rows = (nvData||[]).map(nv => `
-    <tr>
+  const rows = (nvData||[]).map((nv, idx) => {
+    // Fix giờ checkin: xử lý nhiều format khác nhau từ GAS
+    let ciTime = '—';
+    if (nv.checkinTime) {
+      const t = nv.checkinTime;
+      // Nếu là timestamp ISO hoặc Date object từ GAS
+      if (typeof t === 'string' && t.includes('T')) {
+        try {
+          ciTime = new Date(t).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Asia/Ho_Chi_Minh'});
+        } catch { ciTime = t; }
+      } else if (typeof t === 'number') {
+        // Google Sheets serial date number
+        const d = new Date((t - 25569) * 86400 * 1000);
+        ciTime = d.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Asia/Ho_Chi_Minh'});
+      } else {
+        ciTime = String(t);
+      }
+    }
+    const ciDisplay = nv.checkinTime
+      ? ciTime + (nv.isWalkIn?' <span class="badge badge-purple">Walk-in</span>':nv.sessionSwitch?' <span class="badge badge-amber">⚠ Đổi ca</span>':'')
+      : '—';
+
+    return `<tr>
+      <td style="color:var(--gray3);font-size:12px">${idx+1}</td>
       <td><strong>${nv.maNV}</strong></td>
-      <td>${nv.hoTen}</td>
-      <td>${nv.store||''}</td>
-      <td><span class="badge ${nv.location==='HN'?'badge-purple':'badge-teal'}">${nv.location||''}</span></td>
-      <td>${nv.checkinTime ? nv.checkinTime + (nv.isWalkIn?' <span class="badge badge-purple">Walk-in</span>':nv.sessionSwitch?' <span class="badge badge-amber">⚠ Đổi ca</span>':'') : '—'}</td>
-      <td>${nv.attempts>0 ? `<span class="badge ${nv.latestResult==='ĐẠT'?'badge-green':nv.latestResult==='KHÔNG ĐẠT'?'badge-red':'badge-amber'}">${nv.latestResult||'Chưa nộp'}</span>` : '<span class="badge badge-gray">Chưa làm</span>'}</td>
+      <td>${nv.hoTen && nv.hoTen !== nv.maNV ? nv.hoTen : '<span style="color:var(--gray3);font-style:italic">'+nv.maNV+'</span>'}</td>
+      <td>${nv.store||'—'}</td>
+      <td><span class="badge ${nv.location==='HN'?'badge-purple':'badge-teal'}">${nv.location||'—'}</span></td>
+      <td style="font-size:12px">${ciDisplay}</td>
+      <td>${nv.attempts>0 ? '<span class="badge '+(nv.latestResult==='ĐẠT'?'badge-green':nv.latestResult==='KHÔNG ĐẠT'?'badge-red':'badge-amber')+'">'+(nv.latestResult||'Chưa nộp')+'</span>' : '<span class="badge badge-gray">Chưa làm</span>'}</td>
       <td style="font-size:12px;color:var(--gray3)">${nv.attempts||0} lần</td>
       <td>
-        ${nv.latestResult==='KHÔNG ĐẠT' ? `<button class="btn btn-amber btn-sm" onclick="openApproveRetake('${nv.maNV}','${nv.hoTen}')">Duyệt làm lại</button>` : ''}
-        ${!nv.checkinTime ? `<button class="btn btn-ghost btn-sm" onclick="qaApproveCheckin('${nv.maNV}','${nv.hoTen}')">Approve CI</button>` : ''}
+        ${nv.latestResult==='KHÔNG ĐẠT' ? '<button class="btn btn-amber btn-sm" onclick="openApproveRetake(''+nv.maNV+'',''+nv.hoTen+'')">Duyệt làm lại</button>' : ''}
+        ${!nv.checkinTime ? '<button class="btn btn-ghost btn-sm" onclick="qaApproveCheckin(''+nv.maNV+'',''+nv.hoTen+'')">Approve CI</button>' : ''}
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
@@ -928,7 +951,7 @@ function renderDashboardContent(d) {
     <div class="table-wrap">
       <table id="dash-table">
         <thead><tr>
-          <th>Mã NV</th><th>Họ tên</th><th>Store</th><th>Location</th>
+          <th>#</th><th>Mã NV</th><th>Họ tên</th><th>Store</th><th>Location</th>
           <th>Giờ CI</th><th>Kết quả</th><th>Lần làm</th><th>Action</th>
         </tr></thead>
         <tbody id="dash-tbody">${rows||'<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--gray3)">Chưa có dữ liệu</td></tr>'}</tbody>
