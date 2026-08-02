@@ -908,8 +908,8 @@ function renderDashboardContent(d) {
       <td>${nv.attempts>0 ? '<span class="badge '+(nv.latestResult==='ĐẠT'?'badge-green':nv.latestResult==='KHÔNG ĐẠT'?'badge-red':'badge-amber')+'">'+(nv.latestResult||'Chưa nộp')+'</span>' : '<span class="badge badge-gray">Chưa làm</span>'}</td>
       <td style="font-size:12px;color:var(--gray3)">${nv.attempts||0} lần</td>
       <td>
-        ${nv.latestResult==='KHÔNG ĐẠT' ? '<button class="btn btn-amber btn-sm" onclick="openApproveRetake(''+nv.maNV+'',''+nv.hoTen+'')">Duyệt làm lại</button>' : ''}
-        ${!nv.checkinTime ? '<button class="btn btn-ghost btn-sm" onclick="qaApproveCheckin(''+nv.maNV+'',''+nv.hoTen+'')">Approve CI</button>' : ''}
+        ${nv.latestResult==='KHÔNG ĐẠT' ? ('<button class="btn btn-amber btn-sm" onclick="openApproveRetake(\''+nv.maNV+'\',\''+nv.hoTen+'\')">Duyệt làm lại</button>') : ''}
+        ${!nv.checkinTime ? ('<button class="btn btn-ghost btn-sm" onclick="qaApproveCheckin(\''+nv.maNV+'\',\''+nv.hoTen+'\')">Approve CI</button>') : ''}
       </td>
     </tr>`;
   }).join('');
