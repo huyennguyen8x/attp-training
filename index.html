@@ -465,6 +465,26 @@ function setQAMode(on) {
 function renderCheckin() {
   const s = appState.currentSession;
   const status = appState.sessionStatus;
+
+  // Nếu quiz đang mở → chuyển hướng sang tab Bài Test
+  if (status.quizOpen) {
+    document.getElementById('checkin-content').innerHTML = `
+      <div class="card">
+        <div class="card-head"><h3>📝 Bài kiểm tra đang mở</h3></div>
+        <div class="card-body" style="text-align:center;padding:40px 20px">
+          <div style="font-size:52px;margin-bottom:16px">📝</div>
+          <div style="font-size:18px;font-weight:700;color:var(--navy);margin-bottom:10px">Checkin đã kết thúc</div>
+          <div class="alert alert-info" style="margin-bottom:20px">
+            Bài kiểm tra ATTP đang mở.<br>Vui lòng chuyển sang tab <strong>Bài Test</strong> để làm bài.
+          </div>
+          <button class="btn btn-primary btn-lg" onclick="gotoTab('quiz')" style="max-width:320px">
+            → Vào làm bài kiểm tra
+          </button>
+        </div>
+      </div>`;
+    return;
+  }
+
   document.getElementById('checkin-content').innerHTML = `
     <div class="card">
       <div class="card-head">
@@ -507,6 +527,7 @@ function ciLookup(val) {
 
 async function doCheckin() {
   if (!appState.sessionStatus.checkinOpen) { showError('ci-error','Checkin đã đóng. Liên hệ QA in-charge.'); return; }
+  if (appState.sessionStatus.quizOpen) { showError('ci-error','Bài kiểm tra đang mở — không nhận checkin mới. Vui lòng vào tab Bài Test để làm bài.'); return; }
   const code = document.getElementById('ci-code').value.trim().toUpperCase();
   if (!code) { showError('ci-error','Vui lòng nhập mã nhân viên.'); return; }
   const sessionId = appState.currentSession?.['Session ID'];
@@ -560,7 +581,7 @@ function showCheckinSuccess(nv) {
           <div class="alert alert-success" style="margin-bottom:20px">
             ✓ Bài kiểm tra sẽ được mở bởi QA sau khi buổi học kết thúc. Vui lòng chú ý thông báo.
           </div>
-          <button class="btn btn-ghost btn-lg" onclick="renderCheckin()">← Người tiếp theo</button>
+          <div style="font-size:13px;color:var(--gray3);margin-top:8px">Bạn có thể đóng trang này</div>
         </div>
       </div>
     </div>`;
@@ -919,6 +940,18 @@ function renderDashboardContent(d) {
       <div class="stat"><div class="stat-val" style="color:#f4817a">${stats.failed||0}</div><div class="stat-lbl">Không đạt</div></div>
     </div>
 
+    <!-- TỈ LỆ CHECKIN/BÀI TEST THEO LOCATION & STORE -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div style="background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden">
+        <div style="background:var(--navy);padding:10px 14px;font-size:13px;font-weight:600;color:#fff">📍 Theo Location</div>
+        <div style="padding:14px" id="ratio-location"><div style="font-size:12px;color:var(--gray3)">Chưa có dữ liệu</div></div>
+      </div>
+      <div style="background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden">
+        <div style="background:var(--navy);padding:10px 14px;font-size:13px;font-weight:600;color:#fff">🏪 Theo Store</div>
+        <div style="padding:14px;max-height:220px;overflow-y:auto" id="ratio-store"><div style="font-size:12px;color:var(--gray3)">Chưa có dữ liệu</div></div>
+      </div>
+    </div>
+
     <div class="random-box">
       <div class="random-names">
         <div class="random-title">🎲 Random Call — Double check có mặt</div>
@@ -963,6 +996,12 @@ function renderDashboardContent(d) {
     appState.randomCallPool = [...nvData].sort(()=>Math.random()-.5);
   }
 
+  // Render tỉ lệ
+  renderRatios(nvData);
+
+  // Render tỉ lệ store/location
+  renderRatios(nvData);
+
   // Auto-refresh dashboard mỗi 60 giây
   clearInterval(appState._dashRefreshInt);
   appState._dashRefreshInt = setInterval(() => {
@@ -992,6 +1031,44 @@ function filterDashTable() {
     const matchResult = !result || (result==='notest' ? rowResult.includes('Chưa') : rowResult.includes(result));
     row.style.display = (matchSearch && matchStore && matchLoc && matchResult) ? '' : 'none';
   });
+}
+
+function renderRatios(nvData) {
+  const byLoc = {}, byStore = {};
+  (nvData||[]).forEach(nv => {
+    const loc = nv.location || 'N/A';
+    const store = nv.store || 'N/A';
+    if (!byLoc[loc]) byLoc[loc] = {total:0, checkin:0, quiz:0, pass:0};
+    if (!byStore[store]) byStore[store] = {total:0, checkin:0, quiz:0, pass:0};
+    byLoc[loc].total++; byStore[store].total++;
+    if (nv.checkinTime) { byLoc[loc].checkin++; byStore[store].checkin++; }
+    if (nv.attempts > 0) { byLoc[loc].quiz++; byStore[store].quiz++; }
+    if (nv.latestResult === 'ĐẠT') { byLoc[loc].pass++; byStore[store].pass++; }
+  });
+  const pct = (a,b) => b ? Math.round(a/b*100)+'%' : '—';
+  const bar = (a,b) => {
+    const p = b ? Math.round(a/b*100) : 0;
+    const c = p>=80?'var(--green)':p>=50?'var(--amber)':'var(--red)';
+    return '<div style="background:var(--gray1);border-radius:4px;height:5px;margin-top:3px"><div style="width:'+p+'%;background:'+c+';height:5px;border-radius:4px"></div></div>';
+  };
+  const locEl = document.getElementById('ratio-location');
+  if (locEl) locEl.innerHTML = Object.entries(byLoc).map(([loc,d]) =>
+    '<div style="margin-bottom:10px">' +
+    '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600"><span>'+loc+'</span><span style="color:var(--gray3);font-size:11px">'+d.total+' NV</span></div>' +
+    '<div style="font-size:11px;color:var(--gray3);display:flex;gap:10px;margin-top:2px">' +
+    '<span>Checkin: <b style="color:var(--teal)">'+d.checkin+'/'+d.total+' ('+pct(d.checkin,d.total)+')</b></span>' +
+    '<span>Làm bài: <b style="color:var(--amber)">'+pct(d.quiz,d.total)+'</b></span>' +
+    '<span>Đạt: <b style="color:var(--green)">'+pct(d.pass,d.total)+'</b></span></div>' +
+    bar(d.checkin,d.total)+'</div>').join('');
+  const storeEl = document.getElementById('ratio-store');
+  if (storeEl) storeEl.innerHTML = Object.entries(byStore)
+    .sort((a,b)=>b[1].total-a[1].total)
+    .map(([store,d]) =>
+    '<div style="margin-bottom:8px">' +
+    '<div style="display:flex;justify-content:space-between;font-size:12px">' +
+    '<span style="font-weight:600">'+store+'</span>' +
+    '<span style="color:var(--gray3);font-size:11px">'+d.checkin+'/'+d.total+' CI &nbsp; '+d.pass+'/'+(d.quiz||0)+' đạt</span></div>' +
+    bar(d.checkin,d.total)+'</div>').join('');
 }
 
 function doRandomCall() {
@@ -1162,6 +1239,18 @@ async function renderAdmin() {
         <div style="display:flex;gap:8px">
           <button class="btn btn-primary btn-sm" onclick="document.getElementById('modal-create-session').classList.remove('hidden')">+ Tạo phiên mới</button>
           <button class="btn btn-ghost btn-sm" onclick="loadSessions()">↺ Đổi phiên</button>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="admin-section">
+      <h4>ℹ️ Xử lý đổi ca & NV mới chưa đăng ký</h4>
+      <div class="card"><div class="card-body">
+        <div class="alert alert-warning" style="margin-bottom:12px">
+          <strong>NV đổi ca (đăng ký ngày khác):</strong> Vào Google Sheet tab <code>DanhSachNV</code> → tìm mã NV → cột <strong>Session ID</strong> để trống hoặc sửa thành session hiện tại → lưu. App tự nhận diện là đổi ca.
+        </div>
+        <div class="alert alert-info">
+          <strong>NV mới chưa đăng ký (Walk-in):</strong> Để NV tự checkin bình thường → chọn Walk-in → nhập tên + store. Hoặc QA thêm thẳng 1 dòng mới vào Sheet <code>DanhSachNV</code> trước khi buổi học bắt đầu.
         </div>
       </div></div>
     </div>
