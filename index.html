@@ -950,9 +950,12 @@ function renderDashboardContent(d) {
     }
     const ciDisplay = nv.checkinTime
       ? ciTime + (nv.isWalkIn?' <span class="badge badge-purple">Walk-in</span>':nv.sessionSwitch?' <span class="badge badge-amber">⚠ Đổi ca</span>':'')
-      : '—';
+      : (nv.crossAttended
+          ? '<span class="badge badge-purple">✓ Dự buổi '+(nv.crossSessionCode||'?')+' lúc '+(nv.crossCheckinTime||'')+'</span>'
+          : '—');
+    const rowClassExtra = nv.crossAttended ? ' style="background:#faf5ff"' : '';
 
-    return `<tr>
+    return `<tr${rowClassExtra}>
       <td style="color:var(--gray3);font-size:12px">${idx+1}</td>
       <td><strong>${nv.maNV}</strong></td>
       <td>${nv.hoTen && nv.hoTen !== nv.maNV ? nv.hoTen : '<span style="color:var(--gray3);font-style:italic">'+nv.maNV+'</span>'}</td>
@@ -990,7 +993,8 @@ function renderDashboardContent(d) {
     <div class="stats-bar">
       <div class="stat"><div class="stat-val">${stats.total||0}</div><div class="stat-lbl">Tổng đăng ký</div></div>
       <div class="stat"><div class="stat-val" style="color:#7ee8ed">${stats.checkedIn||0}</div><div class="stat-lbl">Đã checkin ${stats.total?'('+Math.round((stats.checkedIn||0)/stats.total*100)+'%)':''}</div></div>
-      <div class="stat"><div class="stat-val" style="color:#f4a8a0">${(stats.total||0)-(stats.checkedIn||0)}</div><div class="stat-lbl">Vắng (chưa CI)</div></div>
+      <div class="stat"><div class="stat-val" style="color:#b98cf0">${stats.crossAttended||0}</div><div class="stat-lbl">Dự buổi khác</div></div>
+      <div class="stat"><div class="stat-val" style="color:#f4a8a0">${Math.max(0,(stats.total||0)-(stats.checkedIn||0)-(stats.crossAttended||0))}</div><div class="stat-lbl">Vắng thật sự</div></div>
       <div class="stat"><div class="stat-val" style="color:#f9d46e">${stats.submitted||0}</div><div class="stat-lbl">Đã nộp bài</div></div>
       <div class="stat"><div class="stat-val" style="color:#6fdc9b">${stats.passed||0}</div><div class="stat-lbl">Đạt</div></div>
       <div class="stat"><div class="stat-val" style="color:#f4817a">${stats.failed||0}</div><div class="stat-lbl">Không đạt</div></div>
@@ -1034,8 +1038,9 @@ function renderDashboardContent(d) {
       </select>
       <select id="dash-filter-checkin" onchange="filterDashTable()" style="padding:8px 12px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px">
         <option value="">Tất cả checkin</option>
-        <option value="checked">Đã checkin</option>
-        <option value="absent">⚠ Vắng (chưa CI)</option>
+        <option value="checked">Đã checkin buổi này</option>
+        <option value="cross">🔄 Dự buổi khác</option>
+        <option value="absent">⚠ Vắng thật sự</option>
       </select>
       <select id="dash-filter-location" onchange="filterDashTable()" style="padding:8px 12px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px">
         <option value="">HN + HCM</option><option>HN</option><option>HCM</option>
@@ -1091,8 +1096,11 @@ function filterDashTable() {
     const matchStore = !store || rowStore.includes(store);
     const matchLoc = !location || rowLoc.includes(location);
     const matchResult = !result || (result==='notest' ? rowResult.includes('Chưa') : rowResult.includes(result));
+    const isCross = rowCheckin.includes('Dự buổi');
     const matchCheckin = !checkinFilter ||
-      (checkinFilter==='checked' ? rowCheckin !== '—' : rowCheckin === '—');
+      (checkinFilter==='checked' ? (rowCheckin !== '—' && !isCross) :
+       checkinFilter==='cross' ? isCross :
+       rowCheckin === '—');
     row.style.display = (matchSearch && matchStore && matchLoc && matchResult && matchCheckin) ? '' : 'none';
   });
 }
@@ -1233,8 +1241,8 @@ async function qaApproveCheckin(maNV, hoTen) {
 // Export
 function exportAbsentList() {
   const nvData = appState.dashboardData?.nvData || [];
-  const absent = nvData.filter(nv => !nv.checkinTime);
-  if (!absent.length) { showToast('Không có ai vắng mặt 🎉'); return; }
+  const absent = nvData.filter(nv => !nv.checkinTime && !nv.crossAttended);
+  if (!absent.length) { showToast('Không có ai vắng thật sự 🎉'); return; }
 
   const rows = [['STT','Mã NV','Họ tên','Dept','Store','Location']];
   absent.forEach((nv,i) => rows.push([i+1, nv.maNV, nv.hoTen, nv.dept||'', nv.store||'', nv.location||'']));
@@ -1244,7 +1252,7 @@ function exportAbsentList() {
   a.href = 'data:text/csv;charset=utf-8,\ufeff'+encodeURIComponent(csv);
   a.download = 'DS_Vang_'+(appState.currentSession?.['Ngày']||'').replace(/\//g,'-')+'.csv';
   a.click();
-  showToast(`⬇ Đã xuất ${absent.length} NV vắng mặt`);
+  showToast(`⬇ Đã xuất ${absent.length} NV vắng thật sự (không tính người dự buổi khác)`);
 }
 
 async function exportData() {
