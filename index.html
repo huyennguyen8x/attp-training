@@ -278,8 +278,15 @@ tr:hover td{background:var(--gray0);}
         <label>Store *</label>
         <select id="wi-store" onchange="wiStoreChange()">
           <option value="">-- Chọn store --</option>
-          <option>LB</option><option>TB</option><option>SYR</option>
-          <option>BT</option><option>TD</option><option>PMH</option><option>VC</option><option>CR</option><option>Depot HAN</option><option>Depot HCM</option>
+          <optgroup label="HN">
+            <option>LB</option><option>TB</option><option>SYR</option>
+          </optgroup>
+          <optgroup label="HCM">
+            <option>ASC</option><option>CLW</option><option>Estella</option><option>Feliz</option>
+            <option>HBT</option><option>HO</option><option>LM</option><option>Masteri</option>
+            <option>NVT</option><option>PMH</option><option>Q2</option><option>SC</option>
+            <option>SGP</option><option>TD</option><option>TDG</option><option>Vista</option>
+          </optgroup>
         </select>
       </div>
       <div class="field">
@@ -329,13 +336,18 @@ tr:hover td{background:var(--gray0);}
     </div>
     <div class="field-row">
       <div class="field">
-        <label>Ngày *</label>
+        <label>Ngày (hiển thị) *</label>
         <input type="text" id="ns-date" placeholder="28/06/2025">
       </div>
       <div class="field">
         <label>Giờ bắt đầu</label>
         <input type="text" id="ns-start" value="08:20">
       </div>
+    </div>
+    <div class="field">
+      <label>Mã buổi (khớp với cột "Ngày Đăng Ký" trong Sheet) *</label>
+      <input type="text" id="ns-code" placeholder="VD: S1">
+      <div class="field-note">⚠️ Quan trọng: nhập đúng mã (S1/S2...) khớp với giá trị QA đã ghi trong cột "Ngày Đăng Ký" của Sheet DanhSachNV. Dùng để phát hiện đổi ca chính xác, không phụ thuộc định dạng ngày.</div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-create-session')">Huỷ</button>
@@ -390,7 +402,7 @@ function gasCall(params) {
       const s = document.getElementById(cbName);
       if (s) s.remove();
       reject(new Error('Timeout'));
-    }, 15000);
+    }, 30000); // tăng lên 30s để xử lý dữ liệu lớn (300+ NV) không bị timeout
     window[cbName] = (data) => {
       clearTimeout(timeout);
       delete window[cbName];
@@ -1014,8 +1026,7 @@ function renderDashboardContent(d) {
         oninput="filterDashTable()">
       <select id="dash-filter-store" onchange="filterDashTable()" style="padding:8px 12px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px">
         <option value="">Tất cả store</option>
-        <option>LB</option><option>TB</option><option>SYR</option>
-        <option>BT</option><option>TD</option><option>PMH</option><option>VC</option><option>CR</option><option>Depot HAN</option><option>Depot HCM</option>
+        ${[...new Set((nvData||[]).map(nv=>nv.store).filter(Boolean))].sort().map(s=>'<option>'+s+'</option>').join('')}
       </select>
       <select id="dash-filter-result" onchange="filterDashTable()" style="padding:8px 12px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px">
         <option value="">Tất cả kết quả</option>
@@ -1537,11 +1548,12 @@ async function submitCreateSession() {
   const name = document.getElementById('ns-name').value.trim();
   const date = document.getElementById('ns-date').value.trim();
   const start = document.getElementById('ns-start').value.trim();
-  if (!name||!date) { showToast('Vui lòng nhập đủ thông tin','error'); return; }
+  const maBuoi = document.getElementById('ns-code').value.trim();
+  if (!name||!date||!maBuoi) { showToast('Vui lòng nhập đủ thông tin, bao gồm Mã buổi','error'); return; }
   try {
-    const res = await gasPost({action:'createSession', password:appState.qaPassword, name, date, startTime:start});
+    const res = await gasPost({action:'createSession', password:appState.qaPassword, name, date, startTime:start, maBuoi});
     if (res.ok) {
-      appState.currentSession = {['Session ID']:res.sessionId,'Tên đợt':name,'Ngày':date};
+      appState.currentSession = {['Session ID']:res.sessionId,'Tên đợt':name,'Ngày':date,'Mã buổi':maBuoi};
       closeModal('modal-create-session');
       showToast('✅ Đã tạo phiên mới: '+name);
       renderAdmin();
