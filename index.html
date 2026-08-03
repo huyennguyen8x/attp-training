@@ -362,7 +362,7 @@ tr:hover td{background:var(--gray0);}
 // ══════════════════════════════════════════════════════════════
 // CẤU HÌNH — THAY GAS_URL SAU KHI DEPLOY APPS SCRIPT
 // ══════════════════════════════════════════════════════════════
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbz5IStXIMPJtbhQoBF32rXc90XHsy7L7j0-YFr2J9riPDAkI7v7O1UL1_E5LIB1wGJDtw/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyYpjwDBPIy8MCCaXt0gLr4tk1dWKTYtVYnlY39ct4iMGb3k4eLG8zlzPsH6B0J15xJqg/exec';
 const LETTERS = ['A','B','C','D'];
 const HN_STORES = ['LB','TB','SYR'];
 
@@ -794,54 +794,57 @@ async function submitQuiz(autoSubmit) {
   clearInterval(appState.timerInt);
   const timeTaken = (appState.questions.length > 0 ? (45*60 - appState.timeLeft) : 0);
 
-  // Tính kết quả NGAY trên client — không chờ server
-  const total = appState.questions.length;
-  let correct = 0;
-  const detail = appState.questions.map((q, qi) => {
-    const chosen = appState.quizAnswers[qi] !== undefined ? parseInt(appState.quizAnswers[qi]) : -1;
-    const isCorrect = chosen === q.correctIndex;
-    if (isCorrect) correct++;
-    return { id: q.id, chosen, correct: q.correctIndex, isCorrect };
-  });
-  const pct = Math.round(correct / total * 100);
-  const pass = correct >= 25; // ngưỡng 25/30
+  // QUAN TRỌNG: Client KHÔNG có đáp án đúng (server cố tình không gửi để chống gian lận)
+  // → PHẢI chấm điểm ở server, không được tính tại client (nếu không sẽ luôn ra 0 điểm sai)
+  const el = document.getElementById('quiz-content');
+  el.innerHTML = `
+    <div class="quiz-wrap">
+      <div class="result-wrap" style="text-align:center;padding:50px 20px">
+        <div class="spinner" style="width:36px;height:36px;border-width:3px;border-top-color:var(--teal);margin:0 auto 20px"></div>
+        <div style="font-size:16px;font-weight:600;color:var(--navy)">Đang chấm bài...</div>
+        <div style="font-size:13px;color:var(--gray3);margin-top:6px">Vui lòng đợi trong giây lát, không tắt trình duyệt</div>
+      </div>
+    </div>`;
 
-  // Hiện kết quả NGAY cho NV — không chờ GAS
-  const localResult = { correct, total, pct, pass, detail };
-  renderQuizResult(localResult, appState.quizMaNV, false);
-
-  // Gửi lên GAS async (retry 3 lần nếu lỗi) — chạy nền, không block UI
   const payload = {
     action: 'submitQuiz',
     maNV: appState.quizMaNV,
     sessionId: appState.currentSession?.['Session ID'],
     answers: appState.quizAnswers,
     timeTaken,
-    clientResult: { correct, pct, pass } // gửi kèm để GAS verify
   };
-  submitWithRetry(payload, 3);
+
+  const res = await submitWithRetry(payload, 4);
+  if (res && res.ok) {
+    renderQuizResult(res, appState.quizMaNV, false);
+  } else {
+    // Lỗi thật sự sau nhiều lần thử — KHÔNG hiện kết quả giả, yêu cầu thử lại
+    el.innerHTML = `
+      <div class="quiz-wrap">
+        <div class="result-wrap" style="text-align:center;padding:40px 20px">
+          <div style="font-size:40px;margin-bottom:14px">⚠️</div>
+          <div style="font-size:16px;font-weight:700;color:var(--red);margin-bottom:8px">Lỗi kết nối khi nộp bài</div>
+          <div style="font-size:13px;color:var(--gray3);margin-bottom:20px">Bài làm của bạn CHƯA được chấm. Vui lòng thử nộp lại hoặc báo QA in-charge.</div>
+          <button class="btn btn-primary btn-lg" onclick="appState.quizSubmitted=false;submitQuiz(false)">🔄 Thử nộp lại</button>
+        </div>
+      </div>`;
+  }
 }
 
-// Gửi kết quả lên GAS với retry — chạy ngầm không ảnh hưởng UI
+// Gửi kết quả lên GAS với retry — trả về kết quả CHÍNH THỨC từ server (có chấm điểm đúng)
 async function submitWithRetry(payload, maxRetry) {
   for (let i = 0; i < maxRetry; i++) {
     try {
       const res = await gasPost(payload);
-      if (res.ok) {
-        console.log('✅ Kết quả đã lưu lên server');
-        return;
-      }
-      if (res.alreadySubmitted) {
-        console.log('ℹ️ Đã lưu trước đó');
-        return;
-      }
+      if (res.ok) return res;
+      if (res.alreadySubmitted && res.result) return { ok:true, ...res.result };
+      console.warn(`Lần ${i+1}/${maxRetry} lỗi:`, res.error);
     } catch(e) {
-      console.warn(`Retry ${i+1}/${maxRetry}:`, e.message);
+      console.warn(`Lần ${i+1}/${maxRetry} exception:`, e.message);
     }
-    // Chờ trước khi retry: 2s, 5s, 10s
-    if (i < maxRetry - 1) await new Promise(r => setTimeout(r, [2000, 5000, 10000][i]));
+    if (i < maxRetry - 1) await new Promise(r => setTimeout(r, [1500, 3000, 6000][i] || 6000));
   }
-  console.error('❌ Không thể lưu kết quả sau', maxRetry, 'lần thử');
+  return null;
 }
 
 function renderQuizResult(r, maNV, alreadyDone) {
@@ -1350,7 +1353,7 @@ async function renderAdmin() {
   const el = document.getElementById('admin-content');
 
   // Setup banner nếu chưa cấu hình GAS
-  const needsSetup = GAS_URL === 'AKfycbz5IStXIMPJtbhQoBF32rXc90XHsy7L7j0-YFr2J9riPDAkI7v7O1UL1_E5LIB1wGJDtw';
+  const needsSetup = GAS_URL === 'AKfycbyYpjwDBPIy8MCCaXt0gLr4tk1dWKTYtVYnlY39ct4iMGb3k4eLG8zlzPsH6B0J15xJqg';
 
   let nvRes, qRes;
   try {
@@ -1366,7 +1369,7 @@ async function renderAdmin() {
   el.innerHTML = `
     ${needsSetup ? `<div class="setup-banner">
       <h3>⚙️ Cần cấu hình GAS URL</h3>
-      <p>Mở file <code>index.html</code> và thay <code>AKfycbz5IStXIMPJtbhQoBF32rXc90XHsy7L7j0-YFr2J9riPDAkI7v7O1UL1_E5LIB1wGJDtw</code> bằng URL của Google Apps Script Web App.</p>
+      <p>Mở file <code>index.html</code> và thay <code>AKfycbyYpjwDBPIy8MCCaXt0gLr4tk1dWKTYtVYnlY39ct4iMGb3k4eLG8zlzPsH6B0J15xJqg</code> bằng URL của Google Apps Script Web App.</p>
       <p>Xem hướng dẫn chi tiết trong file <code>HUONG_DAN_DEPLOY.md</code>.</p>
     </div>` : ''}
 
@@ -1616,7 +1619,7 @@ async function boot() {
 
   // Lấy session hiện tại
   try {
-    if (GAS_URL !== 'AKfycbz5IStXIMPJtbhQoBF32rXc90XHsy7L7j0-YFr2J9riPDAkI7v7O1UL1_E5LIB1wGJDtw') {
+    if (GAS_URL !== 'AKfycbyYpjwDBPIy8MCCaXt0gLr4tk1dWKTYtVYnlY39ct4iMGb3k4eLG8zlzPsH6B0J15xJqg') {
       const res = await gasGet({action:'getSession'});
       if (res.ok && res.session) {
         appState.currentSession = res.session;
