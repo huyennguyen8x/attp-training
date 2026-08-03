@@ -966,7 +966,7 @@ function renderDashboardContent(d) {
       <td style="font-size:12px;color:var(--gray3)">${nv.attempts||0} lần</td>
       <td>
         ${nv.latestResult==='KHÔNG ĐẠT' ? ('<button class="btn btn-amber btn-sm" onclick="openApproveRetake(\''+nv.maNV+'\',\''+nv.hoTen+'\')">Duyệt làm lại</button>') : ''}
-        ${!nv.checkinTime ? ('<button class="btn btn-ghost btn-sm" onclick="qaApproveCheckin(\''+nv.maNV+'\',\''+nv.hoTen+'\')">Approve CI</button>') : ''}
+        ${(!nv.checkinTime && !nv.crossAttended) ? ('<button class="btn btn-ghost btn-sm" onclick="qaApproveCheckin(\''+nv.maNV+'\',\''+nv.hoTen+'\')">✓ Approve CI (có mặt)</button>') : ''}
       </td>
     </tr>`;
   }).join('');
@@ -1002,14 +1002,14 @@ function renderDashboardContent(d) {
 
     <div id="switch-alert-box"></div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-      <div style="background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden">
-        <div style="background:var(--navy);padding:10px 14px;font-size:13px;font-weight:600;color:#fff">📍 Theo Location</div>
-        <div style="padding:14px" id="ratio-location"><div style="font-size:12px;color:var(--gray3)">Chưa có dữ liệu</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;align-items:stretch">
+      <div style="background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column">
+        <div style="background:var(--navy);padding:10px 14px;font-size:13px;font-weight:600;color:#fff;flex-shrink:0">📍 Theo Location <span style="font-weight:400;font-size:11px;opacity:.7">(click để lọc)</span></div>
+        <div style="padding:12px 14px;height:260px;overflow-y:auto" id="ratio-location"><div style="font-size:12px;color:var(--gray3)">Chưa có dữ liệu</div></div>
       </div>
-      <div style="background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden">
-        <div style="background:var(--navy);padding:10px 14px;font-size:13px;font-weight:600;color:#fff">🏪 Theo Store</div>
-        <div style="padding:14px;max-height:220px;overflow-y:auto" id="ratio-store"><div style="font-size:12px;color:var(--gray3)">Chưa có dữ liệu</div></div>
+      <div style="background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column">
+        <div style="background:var(--navy);padding:10px 14px;font-size:13px;font-weight:600;color:#fff;flex-shrink:0">🏪 Theo Store <span style="font-weight:400;font-size:11px;opacity:.7">(click để lọc)</span></div>
+        <div style="padding:12px 14px;height:260px;overflow-y:auto" id="ratio-store"><div style="font-size:12px;color:var(--gray3)">Chưa có dữ liệu</div></div>
       </div>
     </div>
 
@@ -1129,7 +1129,7 @@ function renderRatios(nvData) {
   };
   const locEl = document.getElementById('ratio-location');
   if (locEl) locEl.innerHTML = Object.entries(byLoc).map(([loc,d]) =>
-    '<div style="margin-bottom:10px">' +
+    '<div class="ratio-item" data-type="location" data-value="'+loc+'" onclick="clickRatioFilter(\'location\',\''+loc+'\')" style="margin-bottom:10px;padding:8px;border-radius:8px;cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'var(--gray0)\'" onmouseout="this.style.background=this.classList.contains(\'ratio-active\')?\'var(--teal-lt)\':\'transparent\'">' +
     '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600"><span>'+loc+'</span><span style="color:var(--gray3);font-size:11px">Đăng ký: '+d.total+' NV</span></div>' +
     '<div style="font-size:11px;color:var(--gray3);display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">' +
     '<span>Checkin: <b style="color:'+pctColor(d.checkin,d.total)+'">'+d.checkin+'/'+d.total+' ('+pct(d.checkin,d.total)+')</b></span>' +
@@ -1142,12 +1142,35 @@ function renderRatios(nvData) {
     .map(([store,d]) => {
       const p = d.total ? Math.round(d.checkin/d.total*100) : 0;
       const warnIcon = p < 100 ? ' ⚠' : '';
-      return '<div style="margin-bottom:9px">' +
+      return '<div class="ratio-item" data-type="store" data-value="'+store+'" onclick="clickRatioFilter(\'store\',\''+store+'\')" style="margin-bottom:9px;padding:6px 8px;border-radius:8px;cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'var(--gray0)\'" onmouseout="this.style.background=this.classList.contains(\'ratio-active\')?\'var(--teal-lt)\':\'transparent\'">' +
       '<div style="display:flex;justify-content:space-between;font-size:12px">' +
       '<span style="font-weight:600">'+store+warnIcon+'</span>' +
       '<span style="color:var(--gray3);font-size:11px">Đăng ký: <b>'+d.total+'</b> &nbsp;·&nbsp; Checkin: <b style="color:'+pctColor(d.checkin,d.total)+'">'+d.checkin+' ('+pct(d.checkin,d.total)+')</b></span></div>' +
       bar(d.checkin,d.total)+'</div>';
     }).join('');
+}
+
+// Click vào 1 dòng Location/Store → tự động lọc bảng bên dưới + tô sáng + cuộn tới
+function clickRatioFilter(type, value) {
+  // Tô sáng item được chọn, bỏ tô sáng các item khác
+  document.querySelectorAll('.ratio-item').forEach(el => {
+    const isMatch = el.dataset.type === type && el.dataset.value === value;
+    el.classList.toggle('ratio-active', isMatch);
+    el.style.background = isMatch ? 'var(--teal-lt)' : 'transparent';
+    el.style.borderLeft = isMatch ? '3px solid var(--teal)' : 'none';
+  });
+
+  // Set dropdown filter tương ứng
+  if (type === 'location') {
+    document.getElementById('dash-filter-location').value = value === 'N/A' ? '' : value;
+    document.getElementById('dash-filter-store').value = '';
+  } else {
+    document.getElementById('dash-filter-store').value = value === 'Chưa có Store' ? '' : value;
+  }
+  filterDashTable();
+
+  // Cuộn tới bảng danh sách
+  document.getElementById('dash-table')?.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 function renderSwitchAlert(nvData) {
