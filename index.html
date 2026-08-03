@@ -537,13 +537,41 @@ function renderCheckin() {
     </div>`;
 }
 
+// Kiểm tra định dạng Mã NV: bắt buộc "AN" + đúng 6 chữ số, VD: AN001394
+function validateMaNVFormat(code) {
+  const c = (code||'').trim().toUpperCase();
+  if (!c) return {valid:false, msg:''};
+  if (!/^AN\d{6}$/.test(c)) {
+    return {
+      valid: false,
+      msg: `⚠️ Mã "${c}" SAI ĐỊNH DẠNG. Mã NV phải bắt đầu bằng "AN" + đúng 6 chữ số (VD: AN001394). Không dùng "NV", không viết tắt, không thiếu số.`
+    };
+  }
+  return {valid:true, msg:''};
+}
+
 function ciLookup(val) {
   const code = val.trim().toUpperCase();
   const confirm = document.getElementById('ci-confirm');
-  if (code.length >= 3) {
+  const btn = document.getElementById('ci-btn');
+  if (!code) { confirm.style.display='none'; if(btn) btn.disabled=false; return; }
+
+  const check = validateMaNVFormat(code);
+  if (!check.valid) {
     confirm.style.display = 'block';
-    confirm.textContent = `Mã: ${code} — Nhấn "Xác nhận điểm danh" để tiếp tục`;
-  } else confirm.style.display = 'none';
+    confirm.style.background = 'var(--red-lt)';
+    confirm.style.borderColor = '#f5c6c2';
+    confirm.style.color = 'var(--red)';
+    confirm.innerHTML = check.msg;
+    if (btn) btn.disabled = true;
+    return;
+  }
+  confirm.style.display = 'block';
+  confirm.style.background = 'var(--teal-lt)';
+  confirm.style.borderColor = 'var(--teal-md)';
+  confirm.style.color = 'var(--teal)';
+  confirm.textContent = `Mã: ${code} — Nhấn "Xác nhận điểm danh" để tiếp tục`;
+  if (btn) btn.disabled = false;
 }
 
 async function doCheckin() {
@@ -551,6 +579,11 @@ async function doCheckin() {
   if (appState.sessionStatus.quizOpen) { showError('ci-error','Bài kiểm tra đang mở — không nhận checkin mới. Vui lòng vào tab Bài Test để làm bài.'); return; }
   const code = document.getElementById('ci-code').value.trim().toUpperCase();
   if (!code) { showError('ci-error','Vui lòng nhập mã nhân viên.'); return; }
+
+  // Chặn ngay tại client nếu sai định dạng — không gửi lên server
+  const formatCheck = validateMaNVFormat(code);
+  if (!formatCheck.valid) { showError('ci-error', formatCheck.msg); return; }
+
   const sessionId = appState.currentSession?.['Session ID'];
   if (!sessionId) { showError('ci-error','Chưa có phiên đào tạo. Liên hệ QA.'); return; }
 
@@ -620,8 +653,13 @@ function showCheckinSuccess(nv) {
         <div class="success-screen">
           <div class="success-icon">${nv._offline ? '📶' : '✅'}</div>
           <div class="success-title" style="color:var(--green)">${nv._offline ? 'Đã lưu offline!' : 'Điểm danh thành công!'}</div>
+          <div style="background:var(--teal-lt);border:2px solid var(--teal-md);border-radius:10px;padding:14px 18px;margin:16px 0;text-align:left">
+            <div style="font-size:11px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Thông tin xác nhận (QA kiểm tra)</div>
+            <div style="font-size:16px;font-weight:800;color:var(--navy)">${nv.maNV||''}</div>
+            <div style="font-size:15px;font-weight:600;color:var(--text)">${nv.hoTen||''}</div>
+            <div style="font-size:13px;color:var(--gray4)">${nv.dept?nv.dept+' · ':''}${nv.store||''}</div>
+          </div>
           <div class="success-detail">
-            <strong>${nv.hoTen}</strong>${nv.store ? ' · '+nv.store : ''}${nv.dept ? ' · '+nv.dept : ''}<br>
             <span style="color:var(--gray3);font-size:12px">${nv.time}${nv.isWalkIn?' · <span style="color:var(--purple);font-weight:600">Walk-in</span>':''}${nv._offline?' · Đang offline, sẽ sync khi có mạng':''}${nv._sessionSwitch?' · <span style="color:var(--amber);font-weight:600">⚠ Đổi ca</span>':''}</span>
           </div>
           <div class="alert alert-success" style="margin-bottom:20px">
@@ -682,10 +720,11 @@ function renderQuizEntry() {
             <div class="field" style="text-align:left">
               <label>Mã nhân viên của bạn</label>
               <input class="input-big" id="quiz-code" placeholder="VD: AN001394"
+                oninput="quizCodeValidate(this.value)"
                 onkeydown="if(event.key==='Enter')startQuiz()"
                 autocomplete="off" spellcheck="false" autocorrect="off">
               <div class="field-note" style="text-align:center;margin-top:8px">
-                ⚠️ Nhập <strong>đầy đủ mã nhân viên</strong> (VD: <strong>AN001394</strong>) — không viết tắt, không bỏ số 0
+                ⚠️ Mã NV phải là <strong>"AN" + đúng 6 chữ số</strong> (VD: <strong>AN001394</strong>) — không dùng "NV", không viết tắt, không bỏ số 0
               </div>
             </div>
             <div id="quiz-name-confirm" style="display:none;background:var(--teal-lt);border:1.5px solid var(--teal-md);border-radius:8px;padding:11px 16px;font-size:14px;color:var(--teal);font-weight:700;margin-bottom:16px;text-align:center"></div>
@@ -696,9 +735,38 @@ function renderQuizEntry() {
     </div>`;
 }
 
+function quizCodeValidate(val) {
+  const code = val.trim().toUpperCase();
+  const confirm = document.getElementById('quiz-name-confirm');
+  const btn = document.querySelector('#view-quiz .btn-primary');
+  if (!code) { confirm.style.display='none'; if(btn) btn.disabled=false; return; }
+
+  const check = validateMaNVFormat(code);
+  if (!check.valid) {
+    confirm.style.display = 'block';
+    confirm.style.background = 'var(--red-lt)';
+    confirm.style.borderColor = '#f5c6c2';
+    confirm.style.color = 'var(--red)';
+    confirm.innerHTML = check.msg;
+    if (btn) btn.disabled = true;
+    return;
+  }
+  confirm.style.display = 'block';
+  confirm.style.background = 'var(--teal-lt)';
+  confirm.style.borderColor = 'var(--teal-md)';
+  confirm.style.color = 'var(--teal)';
+  confirm.textContent = `✓ Mã: ${code} — Nhấn "Bắt đầu làm bài" để tiếp tục`;
+  if (btn) btn.disabled = false;
+}
+
 async function startQuiz() {
   const code = document.getElementById('quiz-code')?.value.trim().toUpperCase();
   if (!code) { showError('quiz-error','Vui lòng nhập mã nhân viên.'); return; }
+
+  // Chặn ngay tại client nếu sai định dạng — không gửi lên server
+  const formatCheck = validateMaNVFormat(code);
+  if (!formatCheck.valid) { showError('quiz-error', formatCheck.msg); return; }
+
   const sessionId = appState.currentSession?.['Session ID'];
   const btn = document.querySelector('#view-quiz .btn-primary');
   if (btn) { btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Đang tải...'; }
@@ -714,6 +782,9 @@ async function startQuiz() {
     appState.quizAnswers = {};
     appState.quizSubmitted = false;
     appState.quizMaNV = code;
+    appState.quizHoTen = res.hoTen || code;
+    appState.quizDept = res.dept || '';
+    appState.quizStore = res.store || '';
     appState.quizAttempt = res.attempt;
     appState.currentQ = 0;
     appState.timeLeft = (res.totalMinutes || 45) * 60;
@@ -863,9 +934,14 @@ function renderQuizResult(r, maNV, alreadyDone) {
           <div style="font-size:11px;color:var(--gray3);margin-top:2px">${correct}/${total}</div>
         </div>
         <div class="verdict ${pass?'pass':'fail'}">${pass?'✅ ĐẠT':'❌ KHÔNG ĐẠT'}</div>
-        <div style="font-size:13px;color:var(--gray3);margin-bottom:16px">
-          ${maNV} · ${appState.quizHoTen||''}<br>
-          <span style="font-size:12px">Nộp lúc: ${new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · Ngưỡng đạt: 25/30</span>
+        <div style="background:var(--teal-lt);border:2px solid var(--teal-md);border-radius:10px;padding:14px 18px;margin-bottom:16px;text-align:left">
+          <div style="font-size:11px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Thông tin xác nhận (QA kiểm tra)</div>
+          <div style="font-size:16px;font-weight:800;color:var(--navy)">${maNV}</div>
+          <div style="font-size:15px;font-weight:600;color:var(--text)">${appState.quizHoTen||''}</div>
+          <div style="font-size:13px;color:var(--gray4)">${appState.quizDept?appState.quizDept+' · ':''}${appState.quizStore||''}</div>
+        </div>
+        <div style="font-size:12px;color:var(--gray3);margin-bottom:16px">
+          Nộp lúc: ${new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · Ngưỡng đạt: 25/30
         </div>
         <div class="alert ${pass?'alert-success':'alert-error'}" style="margin-bottom:${pass?'20':'16'}px">
           ${pass ? '🎉 Chúc mừng! Bạn đã HOÀN THÀNH bài kiểm tra ATTP.' 
@@ -920,14 +996,32 @@ async function doQALogin() {
 async function renderDashboard() {
   const el = document.getElementById('dashboard-content');
   el.innerHTML = '<div class="loading">⏳ Đang tải dashboard...</div>';
-  try {
-    const sessionId = appState.currentSession?.['Session ID'];
-    const res = await gasGet({action:'getDashboard', sessionId, password:appState.qaPassword});
-    if (!res.ok) { el.innerHTML=`<div class="alert alert-error">${res.error}</div>`; return; }
-    appState.dashboardData = res;
-    appState.sessionStatus = {checkinOpen:res.checkinOpen, quizOpen:res.quizOpen};
-    renderDashboardContent(res);
-  } catch(e) { el.innerHTML='<div class="alert alert-error">Lỗi tải dashboard.</div>'; }
+  const sessionId = appState.currentSession?.['Session ID'];
+
+  // Retry tự động 3 lần — Dashboard hay bị timeout khi hệ thống đông NV cùng lúc (giờ cao điểm)
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await gasGet({action:'getDashboard', sessionId, password:appState.qaPassword});
+      if (res.ok) {
+        appState.dashboardData = res;
+        appState.sessionStatus = {checkinOpen:res.checkinOpen, quizOpen:res.quizOpen};
+        renderDashboardContent(res);
+        return;
+      }
+      if (attempt === 3) { el.innerHTML = `<div class="alert alert-error">${res.error}</div>`; return; }
+    } catch(e) {
+      if (attempt < 3) {
+        el.innerHTML = `<div class="loading">⏳ Đang tải lại (lần ${attempt+1}/3)... Hệ thống có thể đang đông NV cùng lúc.</div>`;
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+  }
+  el.innerHTML = `
+    <div class="alert alert-error">
+      Lỗi tải dashboard — có thể do hệ thống đang xử lý nhiều yêu cầu cùng lúc (giờ cao điểm).
+      <br><strong>Lưu ý: NV vẫn checkin/làm bài bình thường</strong>, chỉ màn hình này bị chậm.
+    </div>
+    <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="renderDashboard()">🔄 Thử lại</button>`;
 }
 
 function renderDashboardContent(d) {
@@ -1388,6 +1482,18 @@ async function renderAdmin() {
     </div>
 
     <div class="admin-section">
+      <h4>🔍 Rà soát trùng lặp dữ liệu</h4>
+      <div class="card"><div class="card-body">
+        <div class="alert alert-info" style="margin-bottom:14px">
+          Kiểm tra: (1) 1 Mã NV nhưng bị ghi <strong>nhiều tên khác nhau</strong> — có thể do NV gõ nhầm mã của người khác.
+          (2) Cùng Họ tên + Store nhưng <strong>khác Mã NV</strong> — có thể do NV dùng mã cũ và mã mới.
+        </div>
+        <button class="btn btn-amber btn-sm" onclick="runIntegrityCheck()">🔍 Chạy rà soát ngay</button>
+        <div id="integrity-result" style="margin-top:14px"></div>
+      </div></div>
+    </div>
+
+    <div class="admin-section">
       <h4>ℹ️ Xử lý đổi ca & NV mới chưa đăng ký</h4>
       <div class="card"><div class="card-body">
         <div class="alert alert-warning" style="margin-bottom:12px">
@@ -1559,6 +1665,49 @@ function downloadQTemplate() {
   const csv = 'Mã câu,Nội dung câu hỏi,Đáp án A,Đáp án B,Đáp án C,Đáp án D,Đáp án đúng (0-3)\nCH001,Nhiệt độ nguy hiểm cho thực phẩm là?,Dưới 5°C,5°C - 60°C,Trên 60°C,Tất cả,1';
   const blob = new Blob(['\ufeff'+csv],{type:'text/csv'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='Template_CauHoi.csv'; a.click();
+}
+
+async function runIntegrityCheck() {
+  const el = document.getElementById('integrity-result');
+  el.innerHTML = '<div class="loading">⏳ Đang rà soát...</div>';
+  try {
+    const res = await gasGet({action:'dataIntegrity', password:appState.qaPassword});
+    if (!res.ok) { el.innerHTML = `<div class="alert alert-error">${res.error}</div>`; return; }
+
+    const { nameConflicts, codeConflicts } = res;
+    if (!nameConflicts.length && !codeConflicts.length) {
+      el.innerHTML = '<div class="alert alert-success">✅ Không phát hiện trùng lặp bất thường.</div>';
+      return;
+    }
+
+    let html = '';
+    if (nameConflicts.length) {
+      html += `<div style="margin-bottom:16px">
+        <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:8px">⚠️ ${nameConflicts.length} Mã NV bị ghi nhiều tên khác nhau (nghi gõ nhầm mã người khác)</div>
+        <div class="table-wrap"><table><thead><tr><th>Mã NV</th><th>Các tên xuất hiện</th><th>Chi tiết dòng</th></tr></thead><tbody>
+        ${nameConflicts.map(c => `<tr>
+          <td><strong>${c.maNV}</strong></td>
+          <td>${c.names.map(n=>'<span class="badge badge-red" style="margin-right:4px">'+n+'</span>').join('')}</td>
+          <td style="font-size:11px">${c.rows.map(r=>r['Họ tên']+' — '+(r['Trạng thái']||'chưa CI')+' '+(r['Thời gian check-in']||'')+' '+(r['Ghi chú QA']||'')).join('<br>')}</td>
+        </tr>`).join('')}
+        </tbody></table></div>
+      </div>`;
+    }
+    if (codeConflicts.length) {
+      html += `<div>
+        <div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:8px">⚠️ ${codeConflicts.length} người có cùng Tên+Store nhưng khác Mã NV (nghi dùng mã cũ/mới)</div>
+        <div class="table-wrap"><table><thead><tr><th>Họ tên</th><th>Store</th><th>Các mã NV</th></tr></thead><tbody>
+        ${codeConflicts.map(c => `<tr>
+          <td>${c.hoTen}</td><td>${c.store}</td>
+          <td>${c.codes.map(cd=>'<span class="badge badge-amber" style="margin-right:4px">'+cd+'</span>').join('')}</td>
+        </tr>`).join('')}
+        </tbody></table></div>
+      </div>`;
+    }
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div class="alert alert-error">Lỗi kết nối khi rà soát.</div>';
+  }
 }
 
 async function loadSessions() {
