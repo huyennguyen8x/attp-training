@@ -267,8 +267,8 @@ tr:hover td{background:var(--gray0);}
 <!-- MODALS -->
 <div class="modal-bg hidden" id="modal-walkin">
   <div class="modal">
-    <h3>📝 Đăng ký Walk-in</h3>
-    <p style="font-size:13px;color:var(--gray3);margin-bottom:16px">Mã NV <strong id="walkin-code-display"></strong> không có trong danh sách đăng ký.</p>
+    <h3 id="walkin-title">📝 Đăng ký Walk-in</h3>
+    <p style="font-size:13px;color:var(--gray3);margin-bottom:16px" id="walkin-subtitle">Mã NV <strong id="walkin-code-display"></strong> không có trong danh sách đăng ký.</p>
     <div class="field">
       <label>Họ và tên *</label>
       <input type="text" id="wi-hoten" placeholder="Nguyễn Văn A">
@@ -287,14 +287,20 @@ tr:hover td{background:var(--gray0);}
         <input type="text" id="wi-location" placeholder="Tự động" readonly style="background:var(--gray1);">
       </div>
     </div>
-    <div class="field">
-      <label>Bộ phận / Dept</label>
-      <input type="text" id="wi-dept" placeholder="Kitchen, Lounge, Stock...">
+    <div class="field-row">
+      <div class="field">
+        <label>Bộ phận / Dept</label>
+        <input type="text" id="wi-dept" placeholder="Kitchen, Lounge, Stock...">
+      </div>
+      <div class="field">
+        <label>Vị trí / Position</label>
+        <input type="text" id="wi-position" placeholder="Seller, Cashier, Supervisor...">
+      </div>
     </div>
     <div id="wi-error" class="alert alert-error" style="display:none"></div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-walkin')">Huỷ</button>
-      <button class="btn btn-primary" onclick="submitWalkIn()">Xác nhận Walk-in</button>
+      <button class="btn btn-primary" onclick="submitWalkIn()" id="walkin-submit-btn">Xác nhận Walk-in</button>
     </div>
   </div>
 </div>
@@ -503,10 +509,13 @@ function renderCheckin() {
           <div id="ci-error" class="alert alert-error" style="display:none;text-align:left"></div>
           <div class="field" style="text-align:left">
             <label>Mã nhân viên của bạn</label>
-            <input class="input-big" id="ci-code" placeholder="VD: NV1001"
+            <input class="input-big" id="ci-code" placeholder="VD: AN001394"
               oninput="ciLookup(this.value)"
               onkeydown="if(event.key==='Enter')doCheckin()"
               autocomplete="off" spellcheck="false" autocorrect="off">
+            <div class="field-note" style="text-align:center;margin-top:8px">
+              ⚠️ Nhập <strong>đầy đủ mã nhân viên</strong> (VD: <strong>AN001394</strong>) — không viết tắt, không bỏ số 0
+            </div>
           </div>
           <div id="ci-confirm" style="display:none;background:var(--teal-lt);border:1.5px solid var(--teal-md);border-radius:8px;padding:12px 16px;font-size:15px;color:var(--teal);font-weight:700;margin-bottom:16px;text-align:center"></div>
           <button class="btn btn-primary btn-lg" onclick="doCheckin()" id="ci-btn">Xác nhận điểm danh</button>
@@ -547,12 +556,37 @@ async function doCheckin() {
       return;
     }
     res = await gasPost(body);
+
+    // NV có trong danh sách nhưng thiếu tên/store → hiện form bổ sung
+    if (res.ok && res.needsInfo) {
+      appState.pendingWalkIn = {maNV: res.maNV, sessionId};
+      document.getElementById('walkin-title').textContent = 'ℹ️ Bổ sung thông tin';
+      document.getElementById('walkin-subtitle').innerHTML = `Mã NV <strong>${res.maNV}</strong> có trong danh sách nhưng đang thiếu thông tin. Vui lòng bổ sung để hoàn tất checkin.`;
+      document.getElementById('walkin-submit-btn').textContent = 'Xác nhận & Checkin';
+      document.getElementById('wi-hoten').value = res.hoTenHienCo || '';
+      document.getElementById('wi-store').value = res.storeHienCo || '';
+      document.getElementById('wi-dept').value = res.deptHienCo || '';
+      document.getElementById('wi-position').value = res.positionHienCo || '';
+      wiStoreChange();
+      document.getElementById('modal-walkin').classList.remove('hidden');
+      btn.disabled=false; btn.textContent='Xác nhận điểm danh';
+      return;
+    }
+
     if (res.ok) { showCheckinSuccess(res); return; }
     if (res.alreadyCheckedIn) { showError('ci-error', `Mã ${code} đã điểm danh rồi. Liên hệ QA nếu cần hỗ trợ.`); btn.disabled=false; btn.textContent='Xác nhận điểm danh'; return; }
-    // Walk-in
+
+    // Mã NV hoàn toàn không có trong danh sách → Walk-in mới
     if (!res.found) {
       appState.pendingWalkIn = {maNV:code, sessionId};
-      document.getElementById('walkin-code-display').textContent = code;
+      document.getElementById('walkin-title').textContent = '📝 Đăng ký Walk-in';
+      document.getElementById('walkin-subtitle').innerHTML = `Mã NV <strong>${code}</strong> không có trong danh sách đăng ký.`;
+      document.getElementById('walkin-submit-btn').textContent = 'Xác nhận Walk-in';
+      document.getElementById('wi-hoten').value = '';
+      document.getElementById('wi-store').value = '';
+      document.getElementById('wi-dept').value = '';
+      document.getElementById('wi-position').value = '';
+      document.getElementById('wi-location').value = '';
       document.getElementById('modal-walkin').classList.remove('hidden');
       btn.disabled=false; btn.textContent='Xác nhận điểm danh';
       return;
@@ -596,14 +630,19 @@ async function submitWalkIn() {
   const hoTen = document.getElementById('wi-hoten').value.trim();
   const store = document.getElementById('wi-store').value;
   const dept = document.getElementById('wi-dept').value.trim();
+  const position = document.getElementById('wi-position').value.trim();
   if (!hoTen || !store) { document.getElementById('wi-error').textContent='Vui lòng nhập đầy đủ Họ tên và Store.'; document.getElementById('wi-error').style.display='block'; return; }
   const location = HN_STORES.includes(store.toUpperCase()) ? 'HN' : 'HCM';
-  const body = {action:'checkin', ...appState.pendingWalkIn, hoTen, store, dept, location, isWalkIn:true};
+
+  // Phân biệt: NV mới hoàn toàn (Walk-in) vs NV có sẵn chỉ thiếu thông tin (bổ sung)
+  const isTrueWalkIn = document.getElementById('walkin-title').textContent.includes('Walk-in');
+  const body = {action:'checkin', ...appState.pendingWalkIn, hoTen, store, dept, position, location, isWalkIn:isTrueWalkIn};
+
   try {
-    const res = navigator.onLine ? await gasPost(body) : (saveOffline(body), {ok:true, hoTen, store, dept, location, time:new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}), isWalkIn:true, _offline:!navigator.onLine});
+    const res = navigator.onLine ? await gasPost(body) : (saveOffline(body), {ok:true, hoTen, store, dept, location, time:new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}), isWalkIn:isTrueWalkIn, _offline:!navigator.onLine});
     if (res.ok) { closeModal('modal-walkin'); showCheckinSuccess(res); }
-    else document.getElementById('wi-error').textContent = res.error; document.getElementById('wi-error').style.display='block';
-  } catch { saveOffline(body); closeModal('modal-walkin'); showCheckinSuccess({hoTen,store,dept,location,time:new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}),isWalkIn:true,_offline:true}); }
+    else { document.getElementById('wi-error').textContent = res.error; document.getElementById('wi-error').style.display='block'; }
+  } catch { saveOffline(body); closeModal('modal-walkin'); showCheckinSuccess({hoTen,store,dept,location,time:new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}),isWalkIn:isTrueWalkIn,_offline:true}); }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -630,9 +669,12 @@ function renderQuizEntry() {
             <div id="quiz-error" class="alert alert-error" style="display:none;text-align:left"></div>
             <div class="field" style="text-align:left">
               <label>Mã nhân viên của bạn</label>
-              <input class="input-big" id="quiz-code" placeholder="VD: NV1001"
+              <input class="input-big" id="quiz-code" placeholder="VD: AN001394"
                 onkeydown="if(event.key==='Enter')startQuiz()"
                 autocomplete="off" spellcheck="false" autocorrect="off">
+              <div class="field-note" style="text-align:center;margin-top:8px">
+                ⚠️ Nhập <strong>đầy đủ mã nhân viên</strong> (VD: <strong>AN001394</strong>) — không viết tắt, không bỏ số 0
+              </div>
             </div>
             <div id="quiz-name-confirm" style="display:none;background:var(--teal-lt);border:1.5px solid var(--teal-md);border-radius:8px;padding:11px 16px;font-size:14px;color:var(--teal);font-weight:700;margin-bottom:16px;text-align:center"></div>
             <button class="btn btn-primary btn-lg" onclick="startQuiz()">Bắt đầu làm bài →</button>
@@ -929,12 +971,14 @@ function renderDashboardContent(d) {
           ${quizOpen?'🔒 Khóa quiz':'🔓 Mở quiz'}
         </button>
         <button class="btn btn-amber btn-sm" onclick="exportData()">⬇ Xuất báo cáo</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportAbsentList()">⚠ Xuất DS Vắng</button>
       </div>
     </div>
 
     <div class="stats-bar">
       <div class="stat"><div class="stat-val">${stats.total||0}</div><div class="stat-lbl">Tổng đăng ký</div></div>
-      <div class="stat"><div class="stat-val" style="color:#7ee8ed">${stats.checkedIn||0}</div><div class="stat-lbl">Đã checkin</div></div>
+      <div class="stat"><div class="stat-val" style="color:#7ee8ed">${stats.checkedIn||0}</div><div class="stat-lbl">Đã checkin ${stats.total?'('+Math.round((stats.checkedIn||0)/stats.total*100)+'%)':''}</div></div>
+      <div class="stat"><div class="stat-val" style="color:#f4a8a0">${(stats.total||0)-(stats.checkedIn||0)}</div><div class="stat-lbl">Vắng (chưa CI)</div></div>
       <div class="stat"><div class="stat-val" style="color:#f9d46e">${stats.submitted||0}</div><div class="stat-lbl">Đã nộp bài</div></div>
       <div class="stat"><div class="stat-val" style="color:#6fdc9b">${stats.passed||0}</div><div class="stat-lbl">Đạt</div></div>
       <div class="stat"><div class="stat-val" style="color:#f4817a">${stats.failed||0}</div><div class="stat-lbl">Không đạt</div></div>
@@ -975,7 +1019,12 @@ function renderDashboardContent(d) {
       </select>
       <select id="dash-filter-result" onchange="filterDashTable()" style="padding:8px 12px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px">
         <option value="">Tất cả kết quả</option>
-        <option>ĐẠT</option><option>KHÔNG ĐẠT</option><option value="notest">Chưa làm</option>
+        <option>ĐẠT</option><option>KHÔNG ĐẠT</option><option value="notest">Chưa làm bài</option>
+      </select>
+      <select id="dash-filter-checkin" onchange="filterDashTable()" style="padding:8px 12px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px">
+        <option value="">Tất cả checkin</option>
+        <option value="checked">Đã checkin</option>
+        <option value="absent">⚠ Vắng (chưa CI)</option>
       </select>
       <select id="dash-filter-location" onchange="filterDashTable()" style="padding:8px 12px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px">
         <option value="">HN + HCM</option><option>HN</option><option>HCM</option>
@@ -997,9 +1046,6 @@ function renderDashboardContent(d) {
     appState.randomCallPool = [...nvData].sort(()=>Math.random()-.5);
   }
 
-  // Render tỉ lệ
-  renderRatios(nvData);
-
   // Render tỉ lệ store/location + cảnh báo đổi ca
   renderRatios(nvData);
   renderSwitchAlert(nvData);
@@ -1018,20 +1064,25 @@ function filterDashTable() {
   const store = document.getElementById('dash-filter-store').value;
   const result = document.getElementById('dash-filter-result').value;
   const location = document.getElementById('dash-filter-location').value;
+  const checkinFilter = document.getElementById('dash-filter-checkin')?.value || '';
   const rows = document.querySelectorAll('#dash-tbody tr');
+  // Cột đúng thứ tự: 0=STT, 1=Mã NV, 2=Họ tên, 3=Store, 4=Location, 5=Giờ CI, 6=Kết quả, 7=Lần làm, 8=Action
   rows.forEach(row => {
     const cells = row.querySelectorAll('td');
     if (!cells.length) return;
-    const maNV = cells[0]?.textContent.toLowerCase();
-    const hoTen = cells[1]?.textContent.toLowerCase();
-    const rowStore = cells[2]?.textContent;
-    const rowLoc = cells[3]?.textContent;
-    const rowResult = cells[5]?.textContent;
+    const maNV = cells[1]?.textContent.toLowerCase() || '';
+    const hoTen = cells[2]?.textContent.toLowerCase() || '';
+    const rowStore = cells[3]?.textContent || '';
+    const rowLoc = cells[4]?.textContent || '';
+    const rowCheckin = cells[5]?.textContent.trim() || '';
+    const rowResult = cells[6]?.textContent || '';
     const matchSearch = !search || maNV.includes(search) || hoTen.includes(search);
     const matchStore = !store || rowStore.includes(store);
     const matchLoc = !location || rowLoc.includes(location);
     const matchResult = !result || (result==='notest' ? rowResult.includes('Chưa') : rowResult.includes(result));
-    row.style.display = (matchSearch && matchStore && matchLoc && matchResult) ? '' : 'none';
+    const matchCheckin = !checkinFilter ||
+      (checkinFilter==='checked' ? rowCheckin !== '—' : rowCheckin === '—');
+    row.style.display = (matchSearch && matchStore && matchLoc && matchResult && matchCheckin) ? '' : 'none';
   });
 }
 
@@ -1039,7 +1090,7 @@ function renderRatios(nvData) {
   const byLoc = {}, byStore = {};
   (nvData||[]).forEach(nv => {
     const loc = nv.location || 'N/A';
-    const store = nv.store || 'N/A';
+    const store = nv.store || 'Chưa có Store';
     if (!byLoc[loc]) byLoc[loc] = {total:0, checkin:0, quiz:0, pass:0};
     if (!byStore[store]) byStore[store] = {total:0, checkin:0, quiz:0, pass:0};
     byLoc[loc].total++; byStore[store].total++;
@@ -1048,29 +1099,36 @@ function renderRatios(nvData) {
     if (nv.latestResult === 'ĐẠT') { byLoc[loc].pass++; byStore[store].pass++; }
   });
   const pct = (a,b) => b ? Math.round(a/b*100)+'%' : '—';
+  const pctColor = (a,b) => {
+    const p = b ? Math.round(a/b*100) : 0;
+    return p>=80?'var(--green)':p>=50?'var(--amber)':'var(--red)';
+  };
   const bar = (a,b) => {
     const p = b ? Math.round(a/b*100) : 0;
-    const c = p>=80?'var(--green)':p>=50?'var(--amber)':'var(--red)';
+    const c = pctColor(a,b);
     return '<div style="background:var(--gray1);border-radius:4px;height:5px;margin-top:3px"><div style="width:'+p+'%;background:'+c+';height:5px;border-radius:4px"></div></div>';
   };
   const locEl = document.getElementById('ratio-location');
   if (locEl) locEl.innerHTML = Object.entries(byLoc).map(([loc,d]) =>
     '<div style="margin-bottom:10px">' +
-    '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600"><span>'+loc+'</span><span style="color:var(--gray3);font-size:11px">'+d.total+' NV</span></div>' +
-    '<div style="font-size:11px;color:var(--gray3);display:flex;gap:10px;margin-top:2px">' +
-    '<span>Checkin: <b style="color:var(--teal)">'+d.checkin+'/'+d.total+' ('+pct(d.checkin,d.total)+')</b></span>' +
-    '<span>Làm bài: <b style="color:var(--amber)">'+pct(d.quiz,d.total)+'</b></span>' +
-    '<span>Đạt: <b style="color:var(--green)">'+pct(d.pass,d.total)+'</b></span></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600"><span>'+loc+'</span><span style="color:var(--gray3);font-size:11px">Đăng ký: '+d.total+' NV</span></div>' +
+    '<div style="font-size:11px;color:var(--gray3);display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">' +
+    '<span>Checkin: <b style="color:'+pctColor(d.checkin,d.total)+'">'+d.checkin+'/'+d.total+' ('+pct(d.checkin,d.total)+')</b></span>' +
+    '<span>Làm bài: <b style="color:var(--amber)">'+d.quiz+'/'+d.checkin+'</b></span>' +
+    '<span>Đạt: <b style="color:var(--green)">'+pct(d.pass,d.quiz)+'</b></span></div>' +
     bar(d.checkin,d.total)+'</div>').join('');
   const storeEl = document.getElementById('ratio-store');
   if (storeEl) storeEl.innerHTML = Object.entries(byStore)
     .sort((a,b)=>b[1].total-a[1].total)
-    .map(([store,d]) =>
-    '<div style="margin-bottom:8px">' +
-    '<div style="display:flex;justify-content:space-between;font-size:12px">' +
-    '<span style="font-weight:600">'+store+'</span>' +
-    '<span style="color:var(--gray3);font-size:11px">'+d.checkin+'/'+d.total+' CI &nbsp; '+d.pass+'/'+(d.quiz||0)+' đạt</span></div>' +
-    bar(d.checkin,d.total)+'</div>').join('');
+    .map(([store,d]) => {
+      const p = d.total ? Math.round(d.checkin/d.total*100) : 0;
+      const warnIcon = p < 100 ? ' ⚠' : '';
+      return '<div style="margin-bottom:9px">' +
+      '<div style="display:flex;justify-content:space-between;font-size:12px">' +
+      '<span style="font-weight:600">'+store+warnIcon+'</span>' +
+      '<span style="color:var(--gray3);font-size:11px">Đăng ký: <b>'+d.total+'</b> &nbsp;·&nbsp; Checkin: <b style="color:'+pctColor(d.checkin,d.total)+'">'+d.checkin+' ('+pct(d.checkin,d.total)+')</b></span></div>' +
+      bar(d.checkin,d.total)+'</div>';
+    }).join('');
 }
 
 function renderSwitchAlert(nvData) {
@@ -1162,6 +1220,22 @@ async function qaApproveCheckin(maNV, hoTen) {
 }
 
 // Export
+function exportAbsentList() {
+  const nvData = appState.dashboardData?.nvData || [];
+  const absent = nvData.filter(nv => !nv.checkinTime);
+  if (!absent.length) { showToast('Không có ai vắng mặt 🎉'); return; }
+
+  const rows = [['STT','Mã NV','Họ tên','Dept','Store','Location']];
+  absent.forEach((nv,i) => rows.push([i+1, nv.maNV, nv.hoTen, nv.dept||'', nv.store||'', nv.location||'']));
+
+  const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,\ufeff'+encodeURIComponent(csv);
+  a.download = 'DS_Vang_'+(appState.currentSession?.['Ngày']||'').replace(/\//g,'-')+'.csv';
+  a.click();
+  showToast(`⬇ Đã xuất ${absent.length} NV vắng mặt`);
+}
+
 async function exportData() {
   const el = document.getElementById('dashboard-content').querySelector('.btn-amber');
   if (el) { el.disabled=true; el.textContent='⏳ Đang tạo...'; }
